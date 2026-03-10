@@ -337,16 +337,28 @@
 const ARROWS = { up:'↑', down:'↓', left:'←', right:'→' };
 
 const GAME_COLORS = [
-  { id:'blue',        hex:'#3498db', label:'Синий'    },
-  { id:'green',       hex:'#27ae60', label:'Зелёный'  },
-  { id:'light_blue',  hex:'#85c1e9', label:'Голубой'  },
-  { id:'light_green', hex:'#82e0aa', label:'С-зел'    },
-  { id:'light_pink',  hex:'#f1948a', label:'С-роз'    },
-  { id:'orange',      hex:'#e67e22', label:'Оранж'    },
-  { id:'pink',        hex:'#e91e63', label:'Розовый'  },
-  { id:'right_dark',  hex:'#8b1a1a', label:'Тёмный'   },
-  { id:'violet',      hex:'#9b59b6', label:'Фиолет'   },
-  { id:'yellow',      hex:'#f1c40f', label:'Жёлтый'   },
+  { id:'blue',        hex:'#3498db', label:'Синий'     },
+  { id:'green',       hex:'#27ae60', label:'Зелёный'   },
+  { id:'light_blue',  hex:'#85c1e9', label:'Голубой'   },
+  { id:'light_green', hex:'#82e0aa', label:'С-зел'     },
+  { id:'light_pink',  hex:'#f1948a', label:'С-роз'     },
+  { id:'orange',      hex:'#e67e22', label:'Оранж'     },
+  { id:'pink',        hex:'#e91e63', label:'Розовый'   },
+  { id:'right_dark',  hex:'#8b1a1a', label:'Тёмный'    },
+  { id:'violet',      hex:'#9b59b6', label:'Фиолет'    },
+  { id:'yellow',      hex:'#f1c40f', label:'Жёлтый'    },
+  { id:'white',       hex:'#f0f0f0', label:'Белый'     },
+  { id:'light_orange',hex:'#ffb347', label:'С-оранж'   },
+  { id:'light_yellow',hex:'#fff176', label:'С-жёлт'    },
+  { id:'black',       hex:'#2c2c2c', label:'Чёрный'    },
+  { id:'grey',        hex:'#808080', label:'Серый'     },
+  { id:'light_grey',  hex:'#c0c0c0', label:'С-серый'   },
+  { id:'brown',       hex:'#a0522d', label:'Коричн'    },
+  { id:'olive',       hex:'#808000', label:'Олива'     },
+  { id:'light_olive', hex:'#b5bd68', label:'С-олива'   },
+  { id:'dark_violet', hex:'#6c1f8b', label:'Т-фиолет'  },
+  { id:'dark_pink',   hex:'#880e4f', label:'Т-розовый' },
+  { id:'dark_olive',  hex:'#4a5500', label:'Т-олива'   },
 ];
 
 const COLORS_MAP = Object.fromEntries(GAME_COLORS.map(c => [c.id, c.hex]));
