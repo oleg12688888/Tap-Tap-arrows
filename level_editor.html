@@ -590,6 +590,11 @@ function levelsToString(levels) {
   return `[\n${parts.join(',\n')}\n]`;
 }
 
+function stripMeta(lv) {
+  const { _n, ...clean } = lv;
+  return clean;
+}
+
 // ============================================================
 // OPEN / SAVE LEVEL
 // ============================================================
@@ -622,17 +627,11 @@ async function saveToGame() {
     gameLevels[editingIdx] = lv;
     setStatus('saveStatus', 'ok', `✅ Уровень ${n} обновлён`);
   } else {
-    // New level — pad with empty placeholders if n > list length
-    const targetIdx = n - 1;
-    while (gameLevels.length < targetIdx) {
-      gameLevels.push({ rows: lv.rows, cols: lv.cols, tiles: [] });
-    }
-    if (gameLevels.length === targetIdx) {
-      gameLevels.push(lv);
-    } else {
-      gameLevels.splice(targetIdx, 0, lv);
-    }
-    editingIdx = targetIdx;
+    // New level — просто добавляем без пустых плейсхолдеров
+    lv._n = n; // запоминаем задуманный номер для комментария в экспорте
+    const insertAt = Math.min(n - 1, gameLevels.length);
+    gameLevels.splice(insertAt, 0, lv);
+    editingIdx = insertAt;
     setStatus('saveStatus', 'ok', `✅ Уровень ${n} добавлен (всего: ${gameLevels.length})`);
   }
 
@@ -648,7 +647,7 @@ async function saveToGame() {
   }
 
   try {
-    const newArr = levelsToString(gameLevels);
+    const newArr = levelsToString(gameLevels.map(stripMeta));
     const newContent = gameFileContent.slice(0, levelsRange.start)
                      + newArr
                      + gameFileContent.slice(levelsRange.end);
@@ -921,7 +920,8 @@ function solveGreedy(g, tries) {
 // ============================================================
 function levelToJS(lv, num) {
   const tiles = (lv.tiles || []).map(t => `{r:${t.r},c:${t.c},dir:'${t.dir}',color:'${t.color}'}`).join(',');
-  let s = `  // Уровень ${num}\n  {rows:${lv.rows},cols:${lv.cols}`;
+  const label = lv._n || num;
+  let s = `  // Уровень ${label}\n  {rows:${lv.rows},cols:${lv.cols}`;
   if (lv.gear) s += `,gear:{r:${lv.gear.r},c:${lv.gear.c}}`;
   s += `,tiles:[\n    ${tiles}\n  ]}`;
   return s;
@@ -935,7 +935,7 @@ function exportJS() {
 
 function exportJSON() {
   const src = (gameLevels && gameLevels.length) ? gameLevels : [currentToLevel()];
-  document.getElementById('exportArea').value = JSON.stringify(src, null, 2);
+  document.getElementById('exportArea').value = JSON.stringify(src.map(stripMeta), null, 2);
 }
 
 function copyExport() {
