@@ -943,7 +943,7 @@ function exportJS() {
 
 function exportJSON() {
   const src = (gameLevels && gameLevels.length) ? gameLevels : [currentToLevel()];
-  document.getElementById('exportArea').value = JSON.stringify(src.map(stripMeta), null, 2);
+  document.getElementById('exportArea').value = JSON.stringify(src, null, 2);
 }
 
 function copyExport() {
@@ -967,13 +967,20 @@ function importFromJSON() {
       // JS файл с комментариями — парсим через Function, не JSON.parse
       let levels;
       if (text.startsWith('[')) {
-        // Чистый JSON массив
+        // Чистый JSON массив — _n уже внутри если экспортировался через редактор
         levels = JSON.parse(text);
       } else {
-        // JS файл: const LEVELS = [...]; — может содержать // комментарии
-        const m = text.match(/=\s*(\[[\s\S]*?\])\s*;?\s*$/);
+        // JS файл: const LEVELS = [...]; — восстанавливаем _n из комментариев // Уровень N
+        const m = text.match(/=\s*(\[[\s\S]*\])\s*;?\s*$/);
         if (!m) throw new Error('Не удалось найти массив уровней в файле');
-        levels = (new Function('return ' + m[1]))();
+        const arrStr = m[1];
+        levels = (new Function('return ' + arrStr))();
+        // Читаем номера из комментариев по порядку
+        const nums = [];
+        const re = /\/\/\s*Уровень\s*(\d+)/g;
+        let hit;
+        while ((hit = re.exec(arrStr)) !== null) nums.push(parseInt(hit[1]));
+        levels.forEach((lv, i) => { if (nums[i]) lv._n = nums[i]; });
       }
       if (!Array.isArray(levels) || !levels.length) throw new Error('Файл пустой или неверный формат');
 
