@@ -4,12 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Разбери Стрелки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@900&family=Nunito:wght@600;700;800;900&display=block">
 <script src="/sdk.js"></script>
 <!-- Яндекс.Метрика — замени 0 на свой ID счётчика -->
 <script>var YM_COUNTER_ID=0;(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
 if(YM_COUNTER_ID) ym(YM_COUNTER_ID,"init",{accurateTrackBounce:true});</script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fira+Sans:wght@900&family=Nunito:wght@600;700;800;900&display=swap');
+  /* Google Fonts loaded via <link> in <head> */
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   button, a, [role="button"] { touch-action: manipulation; }
@@ -1062,6 +1065,12 @@ if(YM_COUNTER_ID) ym(YM_COUNTER_ID,"init",{accurateTrackBounce:true});</script>
   }
 
   /* === ТУТОРИАЛ === */
+  #scrGame.tutorial-active #btnBankGame,
+  #scrGame.tutorial-active #btnBack,
+  #scrGame.tutorial-active #btnSettings,
+  #scrGame.tutorial-active #btnHintLight,
+  #scrGame.tutorial-active #btnHintHammer,
+  #scrGame.tutorial-active .zoom-controls { pointer-events: none; opacity: 0.4; }
   #tutorialOverlay {
     position: fixed; inset: 0;
     z-index: 200;
@@ -1283,25 +1292,23 @@ if(YM_COUNTER_ID) ym(YM_COUNTER_ID,"init",{accurateTrackBounce:true});</script>
   /* ======= PRELOADER ======= */
   #appLoader {
     position: fixed; inset: 0; z-index: 9999;
-    display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(160deg, #1a0a3a 0%, #0d1f4a 60%, #0a2a1a 100%);
+    display: flex; align-items: flex-end; justify-content: center;
+    background: url('assets/ui/loading/Preloader.png') center center / cover no-repeat;
     transition: opacity 0.45s ease;
+    padding-bottom: 60px;
   }
   #appLoader.fade-out { opacity: 0; pointer-events: none; }
-  .loader-box { display: flex; flex-direction: column; align-items: center; gap: 18px; }
-  .loader-spinner {
-    width: 56px; height: 56px;
-    border: 5px solid rgba(255,255,255,0.15);
-    border-top-color: #fff; border-radius: 50%;
-    animation: spin 0.85s linear infinite;
+  .loader-box { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .loader-heart-grid {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(90vw, 400px); pointer-events: none;
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loader-text { color: #fff; font-family: 'Nunito',sans-serif; font-size: 17px; font-weight: 700; opacity: 0.85; }
   .loader-bar-track {
-    width: 190px; height: 8px;
-    background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden;
+    width: min(60vw, 280px); height: 26px;
+    background: url('assets/ui/loading/Loading%20Bar%20BG.png') center / 100% 100% no-repeat;
+    border-radius: 13px; overflow: hidden;
   }
-  .loader-bar-fill { height: 100%; background: #fff; border-radius: 4px; width: 0%; transition: width 0.2s ease; }
+  .loader-bar-fill { height: 100%; background: url('assets/ui/loading/Loading%20Bar%20Fill.png') left center / min(60vw, 280px) 100% no-repeat; width: 0%; transition: width 0.25s ease; }
 
   /* Play-button mini-loader */
   #playLoader {
@@ -1321,9 +1328,8 @@ if(YM_COUNTER_ID) ym(YM_COUNTER_ID,"init",{accurateTrackBounce:true});</script>
 <body>
 <!-- Начальный загрузчик -->
 <div id="appLoader">
+  <img class="loader-heart-grid" src="assets/ui/loading/Heart Grid.png" alt="">
   <div class="loader-box">
-    <div class="loader-spinner"></div>
-    <div class="loader-text">Загрузка...</div>
     <div class="loader-bar-track"><div class="loader-bar-fill" id="loaderBarFill"></div></div>
   </div>
 </div>
@@ -1336,7 +1342,7 @@ if(YM_COUNTER_ID) ym(YM_COUNTER_ID,"init",{accurateTrackBounce:true});</script>
 <div id="tutorialOverlay" style="display:none">
   <div id="tutorialBubble">
     <p>Нажимай на стрелки, чтобы убирать кубики!</p>
-    <p class="tut-arrow-hint">Начни вот с этой стрелки ↓</p>
+    <p class="tut-arrow-hint">Начни вот с этой стрелки</p>
   </div>
   <img id="tutorialHand" src="assets/ui/tutorial/hand.png" alt="">
 </div>
@@ -1661,14 +1667,7 @@ if(YM_COUNTER_ID) ym(YM_COUNTER_ID,"init",{accurateTrackBounce:true});</script>
 /* ================================================================
    🍞  TOAST УВЕДОМЛЕНИЯ
    ================================================================ */
-function showToast(message, type = '') {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = 'toast' + (type ? ' ' + type : '');
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => { if(toast.parentNode) toast.remove(); }, 2600);
-}
+function showToast(message, type = '') {}
 
 /* ================================================================
    🎊  КОНФЕТТИ
@@ -1792,7 +1791,7 @@ const LOCATION_BGS = {
 
 let G = {
   lives: CFG.livesPerLevel,
-  coins: 0,
+  coins: 30,
   hintLight: CFG.startLight, hintHammer: CFG.startHammer,
   hammerMode: false,
   levelStars: [], unlocked: 1,
@@ -1829,7 +1828,7 @@ function load() {
     const d = JSON.parse(localStorage.getItem('arrowGame'));
     if(!d) return;
     Object.assign(G, {
-      coins: d.coins??0, hintLight: d.hintLight??CFG.startLight,
+      coins: d.coins??30, hintLight: d.hintLight??CFG.startLight,
       hintHammer: d.hintHammer??CFG.startHammer,
       levelStars: d.levelStars??[], unlocked: d.unlocked??1,
       savedProgress: d.savedProgress??null,
@@ -1848,7 +1847,6 @@ function loseLife() {
   if(G.lives<=0) {
     G.savedProgress=null; save(); // не сохраняем прогресс с 0 жизнями
     const btn = document.getElementById('btnContinueForCoins');
-    btn.disabled = G.coins < CFG.continuePrice;
     document.getElementById('nlPlayPrice').textContent = CFG.continuePrice;
     setTimeout(()=>openModal('modalNoLives'),400);
   }
@@ -1856,7 +1854,7 @@ function loseLife() {
 
 /** Продолжить уровень за монеты (даёт ещё 3 жизни) */
 function continueForCoins() {
-  if(G.coins < CFG.continuePrice) { showToast('Недостаточно монет!','error'); return; }
+  if(G.coins < CFG.continuePrice) { closeModal('modalNoLives'); G.bankFromNoLives = true; openBank(); return; }
   G.coins -= CFG.continuePrice;
   G.lives = CFG.livesPerLevel;
   closeModal('modalNoLives');
@@ -1968,6 +1966,7 @@ async function onTileClick(r,c) {
   if(G.busy) return;
 
   if(canMove(r,c)){
+    if(G.pendingHintLight){ G.hintLight--; G.pendingHintLight=false; save(); refreshUI(); }
     removeTile(r,c,'fly-'+t.dir,true);
     saveProgress();
     checkWin();
@@ -2023,6 +2022,7 @@ function totalStars(){return G.levelStars.reduce((a,b)=>a+(b||0),0);}
    🔍  ЗУМ И ПЕРЕМЕЩЕНИЕ
    ================================================================ */
 const zoom = {
+  locked: false,
   scale: 1,
   minScale: 0.5,
   maxScale: 2.5,
@@ -2088,6 +2088,7 @@ document.getElementById('btnZoomOut').addEventListener('click', (e) => { e.stopP
 // Колёсико мыши (десктоп)
 document.getElementById('boardWrap').addEventListener('wheel', (e) => {
   e.preventDefault();
+  if (zoom.locked) return;
   zoomBy(e.deltaY < 0 ? 0.1 : -0.1);
 }, { passive: false });
 
@@ -2136,6 +2137,7 @@ function getTouchDist(touches) {
 }
 
 wrap.addEventListener('touchstart', (e) => {
+  if (zoom.locked) return;
   if (e.touches.length === 2) {
     e.preventDefault();
     stopInertia();
@@ -2156,6 +2158,7 @@ wrap.addEventListener('touchstart', (e) => {
 }, { passive: false });
 
 wrap.addEventListener('touchmove', (e) => {
+  if (zoom.locked) return;
   if (e.touches.length === 2) {
     e.preventDefault();
     const dist = getTouchDist(e.touches);
@@ -2200,6 +2203,7 @@ wrap.addEventListener('touchend', (e) => {
 
 // === Мышь: перетаскивание (десктоп) ===
 wrap.addEventListener('mousedown', (e) => {
+  if (zoom.locked) return;
   if (e.target.closest('.zoom-btn')) return;
   stopInertia();
   dragMoved = false;
@@ -2259,7 +2263,7 @@ function useLight() {
   if(G.hintLight<=0) { openHintsShop('light'); return; }
   if(G.busy) return;
   const m=findMovable(); if(!m) return;
-  G.hintLight--; save(); refreshUI();
+  G.pendingHintLight = true;
   track('hint_light', {level: G.lvl+1});
   const el=document.querySelector(`.tile[data-r="${m.r}"][data-c="${m.c}"]`);
   if(el){el.classList.add('highlighted');setTimeout(()=>el.classList.remove('highlighted'),2000);}
@@ -2384,6 +2388,7 @@ function startLevel(idx) {
   const sp=G.savedProgress;
   const hasProgress=sp && sp.lvl===idx && sp.remaining && sp.remaining.length>0;
   G.lvl=idx; G.rows=lv.rows; G.cols=lv.cols; G.busy=false;
+  G.pendingHintLight=false;
   clearTimeout(G._stuckTimer);
   disableHammerMode();
   if(!hasProgress) { G.lives=CFG.livesPerLevel; track('level_start', {level: idx+1}); }
@@ -2702,7 +2707,7 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 /* ================================================================
    📊  АНАЛИТИКА
    ================================================================ */
-const YM_COUNTER_ID = 0; // ← ЗАМЕНИ НА ID своего счётчика Метрики
+// YM_COUNTER_ID объявлен выше в теге <script> Яндекс.Метрики
 
 /**
  * Отправляет событие в Яндекс.Метрику.
@@ -2752,7 +2757,7 @@ async function initYandexSDK() {
     if (data.gameState) {
       const d = data.gameState;
       Object.assign(G, {
-        coins:         d.coins         ?? 0,
+        coins:         d.coins         ?? 30,
         hintLight:     d.hintLight     ?? CFG.startLight,
         hintHammer:    d.hintHammer    ?? CFG.startHammer,
         levelStars:    d.levelStars    ?? [],
@@ -2841,6 +2846,8 @@ function showInterstitialAd(onClose) {
 
 function showTutorial() {
   if (G.tutorialDone) return;
+  zoom.locked = true;
+  document.getElementById('scrGame').classList.add('tutorial-active');
   // Показываем пузырь, рука скрыта
   const overlay = document.getElementById('tutorialOverlay');
   document.getElementById('tutorialBubble').style.display = 'block';
@@ -2872,6 +2879,8 @@ function hideTutorial() {
   const overlay = document.getElementById('tutorialOverlay');
   if (overlay.style.display === 'none') return;
   overlay.style.display = 'none';
+  zoom.locked = false;
+  document.getElementById('scrGame').classList.remove('tutorial-active');
   G.tutorialDone = true;
   save();
 }
@@ -2976,19 +2985,24 @@ document.getElementById('btnContinueForCoins').addEventListener('click', continu
 document.getElementById('btnRestartLevel').addEventListener('click', ()=>{closeModal('modalNoLives');showScreen('scrMenu');});
 document.getElementById('btnStuckRestart').addEventListener('click', ()=>{closeModal('modalStuck');restartLevel();});
 document.getElementById('btnStuckMenu').addEventListener('click', ()=>{closeModal('modalStuck');showInterstitialAd(()=>showScreen('scrMenu'));});
-document.getElementById('btnBankClose').addEventListener('click', ()=>closeModal('modalBank'));
+document.getElementById('btnBankClose').addEventListener('click', () => {
+  closeModal('modalBank');
+  if (G.bankFromNoLives) { G.bankFromNoLives = false; showInterstitialAd(() => showScreen('scrMenu')); }
+});
 document.getElementById('btnHintsShopClose').addEventListener('click', ()=>closeModal('modalHintsShop'));
 
 // Кнопки покупки подсказок (x3 за 30 монет)
 document.getElementById('btnBuyHintLightClose').addEventListener('click', ()=>closeModal('modalBuyHintLight'));
 document.getElementById('btnBuyHintHammerClose').addEventListener('click', ()=>closeModal('modalBuyHintHammer'));
 document.getElementById('btnBuyHintLightBuy').addEventListener('click', ()=>{
-  purchaseItem(30, ()=>{ G.hintLight+=3; save(); refreshUI(); }, '+3 💡!');
-  closeModal('modalBuyHintLight');
+  const ok = purchaseItem(30, ()=>{ G.hintLight+=3; save(); refreshUI(); }, '+3 💡!');
+  if (ok) { closeModal('modalBuyHintLight'); }
+  else { closeModal('modalBuyHintLight'); openBank(); }
 });
 document.getElementById('btnBuyHintHammerBuy').addEventListener('click', ()=>{
-  purchaseItem(30, ()=>{ G.hintHammer+=3; save(); refreshUI(); }, '+3 🔨!');
-  closeModal('modalBuyHintHammer');
+  const ok = purchaseItem(30, ()=>{ G.hintHammer+=3; save(); refreshUI(); }, '+3 🔨!');
+  if (ok) { closeModal('modalBuyHintHammer'); }
+  else { closeModal('modalBuyHintHammer'); openBank(); }
 });
 
 // Закрытие модалок по клику на фон
@@ -2997,6 +3011,7 @@ document.getElementById('btnBuyHintHammerBuy').addEventListener('click', ()=>{
     if(e.target.id === id) {
       closeModal(id);
       if(id === 'modalNoLives') showScreen('scrMenu');
+      if(id === 'modalBank' && G.bankFromNoLives) { G.bankFromNoLives = false; showInterstitialAd(() => showScreen('scrMenu')); }
     }
   });
 });
@@ -3154,12 +3169,12 @@ function preloadImages(urls, onProgress, onDone) {
   preloadImages(INITIAL_ASSETS, (ratio) => {
     loaderBarFill.style.width = (ratio * 100) + '%';
   }, () => {
-    // Показываем меню
-    document.getElementById('scrMenu').classList.add('active');
-    // Плавно скрываем загрузчик
-    const loader = document.getElementById('appLoader');
-    loader.classList.add('fade-out');
-    setTimeout(() => loader.remove(), 500);
+    document.fonts.ready.then(() => {
+      document.getElementById('scrMenu').classList.add('active');
+      const loader = document.getElementById('appLoader');
+      loader.classList.add('fade-out');
+      setTimeout(() => loader.remove(), 500);
+    });
   });
 })();
 </script>
