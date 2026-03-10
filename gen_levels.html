@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Level Direction Generator</title>
+<style>
+  body { font-family: monospace; background: #1a1a2e; color: #eee; padding: 20px; }
+  h1 { color: #e94560; }
+  textarea { width: 100%; height: 300px; background: #0d1117; color: #58d68d;
+             border: 1px solid #333; padding: 10px; font-size: 12px; margin-top: 10px; }
+  .btn { background: #e94560; color: #fff; border: none; padding: 10px 20px;
+         cursor: pointer; border-radius: 6px; margin: 6px 4px; font-size: 14px; }
+  .btn:hover { background: #c73652; }
+  .info { color: #aaa; font-size: 13px; margin: 6px 0; }
+  .ok { color: #0f9b58; }
+  .fail { color: #e94560; }
+  .level-out { margin: 10px 0; padding: 10px; background: #16213e; border-radius: 6px; }
+  h3 { margin: 6px 0; }
+</style>
+</head>
+<body>
+<h1>⚙️ Level Direction Generator</h1>
+<p class="info">Назначает направление каждому тайлу по принципу: смотри к ближайшему краю поля.
+Это гарантирует отсутствие дедлоков и добавляет разнообразие направлений внутри зон.</p>
+
+<button class="btn" onclick="generate()">▶ Сгенерировать все уровни</button>
+<button class="btn" onclick="copyAll()">📋 Скопировать весь массив LEVELS</button>
+
+<div id="results"></div>
+<textarea id="output" placeholder="Нажми кнопку выше..."></textarea>
+
+<script>
+// ─── Исходные данные: только позиции (r,c) и цвета, без направлений ──────────
+
+const SHAPES = [
+  // Level 1 — Heart (rows:8, cols:9)
+  { rows:8, cols:9, name:'Heart', tiles:[
+    {r:0,c:1,color:'yellow'},{r:0,c:2,color:'yellow'},{r:0,c:6,color:'yellow'},{r:0,c:7,color:'yellow'},
+    {r:1,c:0,color:'yellow'},{r:1,c:1,color:'yellow'},{r:1,c:2,color:'yellow'},{r:1,c:3,color:'yellow'},{r:1,c:5,color:'yellow'},{r:1,c:6,color:'yellow'},{r:1,c:7,color:'yellow'},{r:1,c:8,color:'yellow'},
+    {r:2,c:0,color:'orange'},{r:2,c:1,color:'orange'},{r:2,c:2,color:'orange'},{r:2,c:3,color:'orange'},{r:2,c:4,color:'orange'},{r:2,c:5,color:'orange'},{r:2,c:6,color:'orange'},{r:2,c:7,color:'orange'},{r:2,c:8,color:'orange'},
+    {r:3,c:0,color:'orange'},{r:3,c:1,color:'orange'},{r:3,c:2,color:'orange'},{r:3,c:3,color:'orange'},{r:3,c:4,color:'orange'},{r:3,c:5,color:'orange'},{r:3,c:6,color:'orange'},{r:3,c:7,color:'orange'},{r:3,c:8,color:'orange'},
+    {r:4,c:1,color:'pink'},{r:4,c:2,color:'pink'},{r:4,c:3,color:'pink'},{r:4,c:4,color:'pink'},{r:4,c:5,color:'pink'},{r:4,c:6,color:'pink'},{r:4,c:7,color:'pink'},
+    {r:5,c:2,color:'pink'},{r:5,c:3,color:'pink'},{r:5,c:4,color:'pink'},{r:5,c:5,color:'pink'},{r:5,c:6,color:'pink'},
+    {r:6,c:3,color:'light_pink'},{r:6,c:4,color:'light_pink'},{r:6,c:5,color:'light_pink'},
+    {r:7,c:4,color:'violet'}
+  ]},
+
+  // Level 2 — Banana (rows:9, cols:11)
+  { rows:9, cols:11, name:'Banana', tiles:[
+    {r:0,c:6,color:'yellow'},{r:0,c:7,color:'yellow'},{r:0,c:8,color:'yellow'},{r:0,c:9,color:'yellow'},{r:1,c:10,color:'yellow'},
+    {r:1,c:7,color:'orange'},{r:1,c:8,color:'orange'},{r:1,c:9,color:'orange'},{r:2,c:9,color:'orange'},{r:2,c:10,color:'orange'},
+    {r:1,c:5,color:'light_pink'},{r:1,c:6,color:'light_pink'},{r:2,c:7,color:'light_pink'},{r:2,c:8,color:'light_pink'},{r:3,c:9,color:'light_pink'},
+    {r:2,c:3,color:'pink'},{r:2,c:4,color:'pink'},{r:2,c:5,color:'pink'},{r:2,c:6,color:'pink'},{r:3,c:8,color:'pink'},
+    {r:3,c:5,color:'right_dark'},{r:3,c:6,color:'right_dark'},{r:3,c:7,color:'right_dark'},{r:4,c:7,color:'right_dark'},{r:4,c:8,color:'right_dark'},
+    {r:3,c:1,color:'violet'},{r:3,c:2,color:'violet'},{r:3,c:3,color:'violet'},{r:3,c:4,color:'violet'},{r:4,c:6,color:'violet'},
+    {r:4,c:0,color:'blue'},{r:4,c:1,color:'blue'},{r:4,c:2,color:'blue'},{r:4,c:4,color:'blue'},{r:4,c:5,color:'blue'},
+    {r:4,c:3,color:'light_blue'},{r:5,c:1,color:'light_blue'},{r:5,c:2,color:'light_blue'},{r:5,c:3,color:'light_blue'},{r:5,c:4,color:'light_blue'},
+    {r:5,c:5,color:'light_green'},{r:5,c:6,color:'light_green'},{r:5,c:7,color:'light_green'},{r:6,c:4,color:'light_green'},{r:6,c:5,color:'light_green'},
+    {r:6,c:2,color:'green'},{r:6,c:3,color:'green'},{r:7,c:2,color:'green'},{r:7,c:3,color:'green'},{r:8,c:2,color:'green'}
+  ]},
+
+  // Level 3 — Star (rows:11, cols:11)
+  { rows:11, cols:11, name:'Star', tiles:[
+    {r:0,c:4,color:'yellow'},{r:0,c:5,color:'yellow'},{r:0,c:6,color:'yellow'},
+    {r:1,c:2,color:'light_green'},{r:1,c:3,color:'light_green'},{r:1,c:4,color:'yellow'},{r:1,c:5,color:'yellow'},{r:1,c:6,color:'yellow'},{r:1,c:7,color:'orange'},{r:1,c:8,color:'orange'},
+    {r:2,c:1,color:'light_green'},{r:2,c:2,color:'light_green'},{r:2,c:3,color:'light_green'},{r:2,c:4,color:'yellow'},{r:2,c:5,color:'yellow'},{r:2,c:6,color:'yellow'},{r:2,c:7,color:'orange'},{r:2,c:8,color:'orange'},{r:2,c:9,color:'light_pink'},
+    {r:3,c:0,color:'light_green'},{r:3,c:1,color:'light_green'},{r:3,c:2,color:'light_green'},{r:3,c:3,color:'green'},{r:3,c:4,color:'green'},{r:3,c:5,color:'green'},{r:3,c:6,color:'green'},{r:3,c:7,color:'green'},{r:3,c:8,color:'orange'},{r:3,c:9,color:'orange'},{r:3,c:10,color:'orange'},
+    {r:4,c:0,color:'light_blue'},{r:4,c:1,color:'light_blue'},{r:4,c:2,color:'light_blue'},{r:4,c:3,color:'green'},{r:4,c:4,color:'green'},{r:4,c:5,color:'green'},{r:4,c:6,color:'green'},{r:4,c:7,color:'light_pink'},{r:4,c:8,color:'orange'},{r:4,c:9,color:'orange'},
+    {r:5,c:0,color:'light_blue'},{r:5,c:1,color:'light_blue'},{r:5,c:2,color:'light_blue'},{r:5,c:3,color:'green'},{r:5,c:4,color:'green'},{r:5,c:5,color:'green'},{r:5,c:6,color:'green'},{r:5,c:7,color:'light_pink'},{r:5,c:8,color:'light_pink'},{r:5,c:9,color:'light_pink'},{r:5,c:10,color:'light_pink'},
+    {r:6,c:0,color:'light_blue'},{r:6,c:1,color:'light_blue'},{r:6,c:2,color:'light_blue'},{r:6,c:3,color:'green'},{r:6,c:4,color:'green'},{r:6,c:5,color:'green'},{r:6,c:6,color:'green'},{r:6,c:7,color:'pink'},{r:6,c:8,color:'light_pink'},{r:6,c:9,color:'light_pink'},
+    {r:7,c:0,color:'blue'},{r:7,c:1,color:'blue'},{r:7,c:2,color:'blue'},{r:7,c:3,color:'green'},{r:7,c:4,color:'green'},{r:7,c:5,color:'green'},{r:7,c:6,color:'green'},{r:7,c:7,color:'pink'},{r:7,c:8,color:'pink'},{r:7,c:9,color:'pink'},
+    {r:8,c:1,color:'blue'},{r:8,c:2,color:'blue'},{r:8,c:3,color:'blue'},{r:8,c:4,color:'violet'},{r:8,c:5,color:'violet'},{r:8,c:6,color:'violet'},{r:8,c:7,color:'pink'},{r:8,c:8,color:'pink'},
+    {r:9,c:1,color:'blue'},{r:9,c:2,color:'blue'},{r:9,c:3,color:'blue'},{r:9,c:4,color:'violet'},{r:9,c:5,color:'violet'},{r:9,c:6,color:'violet'},{r:9,c:7,color:'pink'},{r:9,c:8,color:'pink'},
+    {r:10,c:4,color:'violet'},{r:10,c:5,color:'violet'},{r:10,c:6,color:'violet'}
+  ]},
+
+  // Level 4 — Tree (rows:13, cols:11)
+  { rows:13, cols:11, name:'Tree', tiles:[
+    {r:0,c:5,color:'green'},
+    {r:1,c:4,color:'green'},{r:1,c:5,color:'green'},{r:1,c:6,color:'green'},
+    {r:2,c:3,color:'green'},{r:2,c:4,color:'green'},{r:2,c:5,color:'green'},{r:2,c:6,color:'green'},{r:2,c:7,color:'green'},
+    {r:3,c:2,color:'light_green'},{r:3,c:3,color:'light_green'},{r:3,c:4,color:'light_green'},{r:3,c:5,color:'light_green'},{r:3,c:6,color:'light_green'},{r:3,c:7,color:'light_green'},{r:3,c:8,color:'light_green'},
+    {r:4,c:1,color:'light_green'},{r:4,c:2,color:'light_green'},{r:4,c:3,color:'light_green'},{r:4,c:4,color:'light_green'},{r:4,c:5,color:'light_green'},{r:4,c:6,color:'light_green'},{r:4,c:7,color:'light_green'},{r:4,c:8,color:'light_green'},{r:4,c:9,color:'light_green'},
+    {r:5,c:1,color:'light_green'},{r:5,c:2,color:'light_green'},{r:5,c:3,color:'light_green'},{r:5,c:4,color:'light_green'},{r:5,c:5,color:'light_green'},{r:5,c:6,color:'light_green'},{r:5,c:7,color:'light_green'},{r:5,c:8,color:'light_green'},{r:5,c:9,color:'light_green'},
+    {r:6,c:0,color:'yellow'},{r:6,c:1,color:'yellow'},{r:6,c:2,color:'yellow'},{r:6,c:3,color:'yellow'},{r:6,c:4,color:'yellow'},{r:6,c:5,color:'yellow'},{r:6,c:6,color:'yellow'},{r:6,c:7,color:'yellow'},{r:6,c:8,color:'yellow'},{r:6,c:9,color:'yellow'},{r:6,c:10,color:'yellow'},
+    {r:7,c:0,color:'yellow'},{r:7,c:1,color:'yellow'},{r:7,c:2,color:'yellow'},{r:7,c:3,color:'yellow'},{r:7,c:4,color:'yellow'},{r:7,c:5,color:'yellow'},{r:7,c:6,color:'yellow'},{r:7,c:7,color:'yellow'},{r:7,c:8,color:'yellow'},{r:7,c:9,color:'yellow'},{r:7,c:10,color:'yellow'},
+    {r:8,c:1,color:'yellow'},{r:8,c:2,color:'yellow'},{r:8,c:3,color:'yellow'},{r:8,c:4,color:'yellow'},{r:8,c:5,color:'yellow'},{r:8,c:6,color:'yellow'},{r:8,c:7,color:'yellow'},{r:8,c:8,color:'yellow'},{r:8,c:9,color:'yellow'},
+    {r:9,c:4,color:'orange'},{r:9,c:5,color:'orange'},{r:9,c:6,color:'orange'},
+    {r:10,c:4,color:'orange'},{r:10,c:5,color:'orange'},{r:10,c:6,color:'orange'},
+    {r:11,c:4,color:'orange'},{r:11,c:5,color:'orange'},{r:11,c:6,color:'orange'},
+    {r:12,c:3,color:'right_dark'},{r:12,c:4,color:'right_dark'},{r:12,c:5,color:'right_dark'},{r:12,c:6,color:'right_dark'},{r:12,c:7,color:'right_dark'}
+  ]},
+
+  // Level 5 — Fish (rows:12, cols:14)
+  { rows:12, cols:14, name:'Fish', tiles:[
+    {r:0,c:5,color:'blue'},{r:0,c:6,color:'blue'},{r:0,c:7,color:'blue'},{r:0,c:8,color:'blue'},
+    {r:1,c:2,color:'blue'},{r:1,c:3,color:'blue'},{r:1,c:4,color:'blue'},{r:1,c:5,color:'blue'},{r:1,c:6,color:'blue'},{r:1,c:7,color:'blue'},{r:1,c:8,color:'blue'},{r:1,c:9,color:'blue'},{r:1,c:10,color:'blue'},{r:1,c:11,color:'orange'},
+    {r:2,c:0,color:'light_blue'},{r:2,c:1,color:'light_blue'},{r:2,c:2,color:'blue'},{r:2,c:3,color:'blue'},{r:2,c:9,color:'blue'},{r:2,c:10,color:'blue'},{r:2,c:11,color:'blue'},{r:2,c:12,color:'orange'},{r:2,c:13,color:'orange'},
+    {r:3,c:0,color:'light_blue'},{r:3,c:1,color:'light_blue'},{r:3,c:2,color:'light_pink'},{r:3,c:3,color:'light_pink'},{r:3,c:4,color:'light_pink'},{r:3,c:5,color:'light_pink'},{r:3,c:6,color:'light_pink'},{r:3,c:7,color:'light_pink'},{r:3,c:8,color:'light_pink'},{r:3,c:9,color:'light_pink'},{r:3,c:10,color:'light_pink'},{r:3,c:11,color:'light_pink'},{r:3,c:12,color:'orange'},{r:3,c:13,color:'orange'},
+    {r:4,c:0,color:'light_blue'},{r:4,c:1,color:'light_blue'},{r:4,c:2,color:'light_pink'},{r:4,c:3,color:'pink'},{r:4,c:4,color:'pink'},{r:4,c:5,color:'pink'},{r:4,c:8,color:'pink'},{r:4,c:9,color:'pink'},{r:4,c:10,color:'light_pink'},{r:4,c:11,color:'light_pink'},{r:4,c:12,color:'orange'},{r:4,c:13,color:'orange'},
+    {r:5,c:0,color:'light_blue'},{r:5,c:1,color:'light_blue'},{r:5,c:2,color:'light_pink'},{r:5,c:3,color:'pink'},{r:5,c:4,color:'pink'},{r:5,c:5,color:'pink'},{r:5,c:6,color:'pink'},{r:5,c:7,color:'pink'},{r:5,c:8,color:'pink'},{r:5,c:9,color:'pink'},{r:5,c:10,color:'light_pink'},{r:5,c:11,color:'light_pink'},{r:5,c:12,color:'orange'},{r:5,c:13,color:'orange'},
+    {r:6,c:0,color:'light_blue'},{r:6,c:1,color:'light_blue'},{r:6,c:2,color:'light_pink'},{r:6,c:3,color:'pink'},{r:6,c:4,color:'pink'},{r:6,c:5,color:'pink'},{r:6,c:6,color:'pink'},{r:6,c:7,color:'pink'},{r:6,c:8,color:'pink'},{r:6,c:9,color:'pink'},{r:6,c:10,color:'light_pink'},{r:6,c:11,color:'light_pink'},{r:6,c:12,color:'orange'},{r:6,c:13,color:'orange'},
+    {r:7,c:0,color:'light_blue'},{r:7,c:1,color:'light_blue'},{r:7,c:2,color:'light_pink'},{r:7,c:3,color:'pink'},{r:7,c:4,color:'pink'},{r:7,c:5,color:'pink'},{r:7,c:8,color:'pink'},{r:7,c:9,color:'pink'},{r:7,c:10,color:'light_pink'},{r:7,c:11,color:'light_pink'},{r:7,c:12,color:'orange'},{r:7,c:13,color:'orange'},
+    {r:8,c:0,color:'light_blue'},{r:8,c:1,color:'light_blue'},{r:8,c:3,color:'light_pink'},{r:8,c:4,color:'light_pink'},{r:8,c:5,color:'light_pink'},{r:8,c:6,color:'light_pink'},{r:8,c:7,color:'light_pink'},{r:8,c:8,color:'light_pink'},{r:8,c:9,color:'violet'},{r:8,c:10,color:'violet'},{r:8,c:11,color:'violet'},{r:8,c:12,color:'orange'},{r:8,c:13,color:'orange'},
+    {r:9,c:2,color:'violet'},{r:9,c:3,color:'violet'},{r:9,c:4,color:'violet'},{r:9,c:5,color:'violet'},{r:9,c:6,color:'violet'},{r:9,c:7,color:'violet'},{r:9,c:8,color:'violet'},{r:9,c:9,color:'violet'},{r:9,c:10,color:'violet'},{r:9,c:13,color:'orange'},
+    {r:10,c:5,color:'violet'},{r:10,c:6,color:'violet'},{r:10,c:7,color:'violet'},{r:10,c:8,color:'violet'},
+    {r:11,c:0,color:'light_blue'} // placeholder, skip
+  ]},
+
+  // Level 6 — Castle (rows:14, cols:13) — keep as-is (already fixed)
+  { rows:14, cols:13, name:'Castle', tiles:[
+    {r:0,c:0,color:'yellow'},{r:0,c:2,color:'yellow'},{r:0,c:4,color:'yellow'},{r:0,c:8,color:'yellow'},{r:0,c:10,color:'yellow'},{r:0,c:12,color:'yellow'},
+    {r:1,c:0,color:'orange'},{r:1,c:1,color:'orange'},{r:1,c:2,color:'orange'},{r:1,c:3,color:'orange'},{r:1,c:4,color:'orange'},
+    {r:2,c:0,color:'orange'},{r:2,c:1,color:'orange'},{r:2,c:2,color:'orange'},{r:2,c:3,color:'orange'},{r:2,c:4,color:'orange'},
+    {r:3,c:0,color:'orange'},{r:3,c:1,color:'orange'},{r:3,c:2,color:'orange'},{r:3,c:3,color:'orange'},{r:3,c:4,color:'orange'},
+    {r:4,c:0,color:'orange'},{r:4,c:1,color:'orange'},{r:4,c:2,color:'orange'},{r:4,c:3,color:'orange'},{r:4,c:4,color:'orange'},
+    {r:1,c:8,color:'orange'},{r:1,c:9,color:'orange'},{r:1,c:10,color:'orange'},{r:1,c:11,color:'orange'},{r:1,c:12,color:'orange'},
+    {r:2,c:8,color:'orange'},{r:2,c:9,color:'orange'},{r:2,c:10,color:'orange'},{r:2,c:11,color:'orange'},{r:2,c:12,color:'orange'},
+    {r:3,c:8,color:'orange'},{r:3,c:9,color:'orange'},{r:3,c:10,color:'orange'},{r:3,c:11,color:'orange'},{r:3,c:12,color:'orange'},
+    {r:4,c:8,color:'orange'},{r:4,c:9,color:'orange'},{r:4,c:10,color:'orange'},{r:4,c:11,color:'orange'},{r:4,c:12,color:'orange'},
+    {r:1,c:5,color:'light_blue'},{r:1,c:6,color:'light_blue'},{r:1,c:7,color:'light_blue'},
+    {r:2,c:5,color:'light_blue'},{r:2,c:6,color:'light_blue'},{r:2,c:7,color:'light_blue'},
+    {r:3,c:5,color:'light_blue'},{r:3,c:6,color:'light_blue'},{r:3,c:7,color:'light_blue'},
+    {r:5,c:0,color:'blue'},{r:5,c:1,color:'blue'},{r:5,c:2,color:'blue'},{r:5,c:3,color:'blue'},{r:5,c:4,color:'blue'},{r:5,c:5,color:'blue'},{r:5,c:6,color:'blue'},{r:5,c:7,color:'blue'},{r:5,c:8,color:'blue'},{r:5,c:9,color:'blue'},{r:5,c:10,color:'blue'},{r:5,c:11,color:'blue'},{r:5,c:12,color:'blue'},
+    {r:6,c:0,color:'violet'},{r:6,c:1,color:'violet'},{r:6,c:2,color:'violet'},{r:6,c:3,color:'violet'},{r:6,c:4,color:'violet'},{r:6,c:5,color:'violet'},{r:6,c:7,color:'violet'},{r:6,c:8,color:'violet'},{r:6,c:9,color:'violet'},{r:6,c:10,color:'violet'},{r:6,c:11,color:'violet'},{r:6,c:12,color:'violet'},
+    {r:7,c:0,color:'violet'},{r:7,c:1,color:'violet'},{r:7,c:2,color:'violet'},{r:7,c:3,color:'violet'},{r:7,c:4,color:'violet'},{r:7,c:8,color:'violet'},{r:7,c:9,color:'violet'},{r:7,c:10,color:'violet'},{r:7,c:11,color:'violet'},{r:7,c:12,color:'violet'},
+    {r:8,c:0,color:'light_pink'},{r:8,c:1,color:'light_pink'},{r:8,c:2,color:'light_pink'},{r:8,c:3,color:'light_pink'},{r:8,c:9,color:'light_pink'},{r:8,c:10,color:'light_pink'},{r:8,c:11,color:'light_pink'},{r:8,c:12,color:'light_pink'},
+    {r:9,c:0,color:'light_pink'},{r:9,c:1,color:'light_pink'},{r:9,c:2,color:'light_pink'},{r:9,c:3,color:'light_pink'},{r:9,c:9,color:'light_pink'},{r:9,c:10,color:'light_pink'},{r:9,c:11,color:'light_pink'},{r:9,c:12,color:'light_pink'},
+    {r:10,c:0,color:'light_green'},{r:10,c:1,color:'light_green'},{r:10,c:2,color:'light_green'},{r:10,c:3,color:'light_green'},{r:10,c:4,color:'light_green'},{r:10,c:5,color:'light_green'},{r:10,c:6,color:'light_green'},{r:10,c:7,color:'light_green'},{r:10,c:8,color:'light_green'},{r:10,c:9,color:'light_green'},{r:10,c:10,color:'light_green'},{r:10,c:11,color:'light_green'},{r:10,c:12,color:'light_green'},
+    {r:11,c:0,color:'light_green'},{r:11,c:1,color:'light_green'},{r:11,c:2,color:'light_green'},{r:11,c:3,color:'light_green'},{r:11,c:4,color:'light_green'},{r:11,c:5,color:'light_green'},{r:11,c:6,color:'light_green'},{r:11,c:7,color:'light_green'},{r:11,c:8,color:'light_green'},{r:11,c:9,color:'light_green'},{r:11,c:10,color:'light_green'},{r:11,c:12,color:'light_green'},
+    {r:12,c:1,color:'green'},{r:12,c:2,color:'green'},{r:12,c:3,color:'green'},{r:12,c:4,color:'green'},{r:12,c:5,color:'green'},{r:12,c:6,color:'green'},{r:12,c:7,color:'green'},{r:12,c:8,color:'green'},{r:12,c:9,color:'green'},{r:12,c:10,color:'green'},{r:12,c:11,color:'green'},
+    {r:13,c:2,color:'green'},{r:13,c:3,color:'green'},{r:13,c:4,color:'green'},{r:13,c:5,color:'green'},{r:13,c:7,color:'green'},{r:13,c:8,color:'green'},{r:13,c:9,color:'green'},{r:13,c:10,color:'green'}
+  ]},
+
+  // Level 7 — Rocket (rows:15, cols:9)
+  { rows:15, cols:9, name:'Rocket', tiles:[
+    {r:0,c:4,color:'light_blue'},
+    {r:1,c:3,color:'light_blue'},{r:1,c:4,color:'light_blue'},{r:1,c:5,color:'light_blue'},
+    {r:2,c:2,color:'light_blue'},{r:2,c:3,color:'light_blue'},{r:2,c:4,color:'light_blue'},{r:2,c:5,color:'light_blue'},{r:2,c:6,color:'light_blue'},
+    {r:3,c:2,color:'light_blue'},{r:3,c:3,color:'light_blue'},{r:3,c:4,color:'light_blue'},{r:3,c:5,color:'light_blue'},{r:3,c:6,color:'light_blue'},
+    {r:4,c:2,color:'light_blue'},{r:4,c:3,color:'light_blue'},{r:4,c:4,color:'light_blue'},{r:4,c:5,color:'light_blue'},{r:4,c:6,color:'light_blue'},
+    {r:5,c:1,color:'violet'},{r:5,c:2,color:'blue'},{r:5,c:3,color:'blue'},{r:5,c:4,color:'blue'},{r:5,c:5,color:'blue'},{r:5,c:6,color:'blue'},{r:5,c:7,color:'violet'},
+    {r:6,c:1,color:'violet'},{r:6,c:2,color:'blue'},{r:6,c:3,color:'blue'},{r:6,c:4,color:'blue'},{r:6,c:5,color:'blue'},{r:6,c:6,color:'blue'},{r:6,c:7,color:'violet'},
+    {r:7,c:1,color:'violet'},{r:7,c:2,color:'blue'},{r:7,c:3,color:'blue'},{r:7,c:4,color:'blue'},{r:7,c:5,color:'blue'},{r:7,c:6,color:'blue'},{r:7,c:7,color:'violet'},
+    {r:8,c:2,color:'blue'},{r:8,c:3,color:'blue'},{r:8,c:4,color:'blue'},{r:8,c:5,color:'blue'},{r:8,c:6,color:'blue'},
+    {r:9,c:0,color:'orange'},{r:9,c:1,color:'orange'},{r:9,c:2,color:'orange'},{r:9,c:3,color:'orange'},{r:9,c:4,color:'orange'},{r:9,c:5,color:'orange'},{r:9,c:6,color:'orange'},{r:9,c:7,color:'orange'},{r:9,c:8,color:'orange'},
+    {r:10,c:0,color:'orange'},{r:10,c:1,color:'orange'},{r:10,c:2,color:'orange'},{r:10,c:3,color:'orange'},{r:10,c:4,color:'orange'},{r:10,c:5,color:'orange'},{r:10,c:6,color:'orange'},{r:10,c:7,color:'orange'},{r:10,c:8,color:'orange'},
+    {r:11,c:1,color:'orange'},{r:11,c:2,color:'orange'},{r:11,c:3,color:'orange'},{r:11,c:4,color:'orange'},{r:11,c:5,color:'orange'},{r:11,c:6,color:'orange'},{r:11,c:7,color:'orange'},
+    {r:12,c:3,color:'right_dark'},{r:12,c:4,color:'right_dark'},{r:12,c:5,color:'right_dark'},
+    {r:13,c:3,color:'right_dark'},{r:13,c:4,color:'right_dark'},{r:13,c:5,color:'right_dark'},
+    {r:14,c:3,color:'yellow'},{r:14,c:4,color:'yellow'},{r:14,c:5,color:'yellow'}
+  ]},
+
+  // Level 8 — Crown (rows:10, cols:15)
+  { rows:10, cols:15, name:'Crown', tiles:[
+    {r:0,c:0,color:'yellow'},{r:1,c:0,color:'yellow'},{r:2,c:0,color:'yellow'},{r:3,c:0,color:'yellow'},
+    {r:0,c:1,color:'yellow'},{r:1,c:1,color:'yellow'},{r:2,c:1,color:'yellow'},
+    {r:0,c:3,color:'orange'},{r:1,c:3,color:'orange'},{r:2,c:3,color:'orange'},{r:0,c:4,color:'orange'},{r:1,c:4,color:'orange'},{r:2,c:4,color:'orange'},{r:3,c:4,color:'orange'},{r:0,c:5,color:'orange'},{r:1,c:5,color:'orange'},{r:2,c:5,color:'orange'},
+    {r:0,c:6,color:'pink'},{r:1,c:6,color:'pink'},{r:2,c:6,color:'pink'},{r:0,c:7,color:'pink'},{r:1,c:7,color:'pink'},{r:2,c:7,color:'pink'},{r:3,c:7,color:'pink'},{r:0,c:8,color:'pink'},{r:1,c:8,color:'pink'},{r:2,c:8,color:'pink'},
+    {r:0,c:9,color:'light_pink'},{r:1,c:9,color:'light_pink'},{r:2,c:9,color:'light_pink'},{r:0,c:10,color:'light_pink'},{r:1,c:10,color:'light_pink'},{r:2,c:10,color:'light_pink'},{r:3,c:10,color:'light_pink'},{r:0,c:11,color:'light_pink'},{r:1,c:11,color:'light_pink'},{r:2,c:11,color:'light_pink'},
+    {r:0,c:13,color:'violet'},{r:1,c:13,color:'violet'},{r:2,c:13,color:'violet'},{r:0,c:14,color:'violet'},{r:1,c:14,color:'violet'},{r:2,c:14,color:'violet'},{r:3,c:14,color:'violet'},
+    {r:3,c:1,color:'light_blue'},{r:3,c:2,color:'light_blue'},{r:3,c:3,color:'light_blue'},{r:3,c:5,color:'light_blue'},{r:3,c:6,color:'light_blue'},{r:3,c:8,color:'light_blue'},{r:3,c:9,color:'light_blue'},{r:3,c:11,color:'light_blue'},{r:3,c:12,color:'light_blue'},{r:3,c:13,color:'light_blue'},
+    {r:4,c:0,color:'blue'},{r:4,c:1,color:'blue'},{r:4,c:2,color:'blue'},{r:4,c:3,color:'blue'},{r:4,c:4,color:'blue'},{r:4,c:5,color:'blue'},{r:4,c:6,color:'blue'},{r:4,c:7,color:'blue'},{r:4,c:8,color:'blue'},{r:4,c:9,color:'blue'},{r:4,c:10,color:'blue'},{r:4,c:11,color:'blue'},{r:4,c:12,color:'blue'},{r:4,c:13,color:'blue'},{r:4,c:14,color:'blue'},
+    {r:5,c:0,color:'blue'},{r:5,c:1,color:'blue'},{r:5,c:2,color:'blue'},{r:5,c:3,color:'blue'},{r:5,c:4,color:'blue'},{r:5,c:5,color:'blue'},{r:5,c:6,color:'blue'},{r:5,c:7,color:'blue'},{r:5,c:8,color:'blue'},{r:5,c:9,color:'blue'},{r:5,c:10,color:'blue'},{r:5,c:11,color:'blue'},{r:5,c:12,color:'blue'},{r:5,c:13,color:'blue'},{r:5,c:14,color:'blue'},
+    {r:6,c:0,color:'blue'},{r:6,c:1,color:'blue'},{r:6,c:2,color:'blue'},{r:6,c:3,color:'blue'},{r:6,c:4,color:'blue'},{r:6,c:5,color:'blue'},{r:6,c:6,color:'blue'},{r:6,c:7,color:'blue'},{r:6,c:8,color:'blue'},{r:6,c:9,color:'blue'},{r:6,c:10,color:'blue'},{r:6,c:11,color:'blue'},{r:6,c:12,color:'blue'},{r:6,c:13,color:'blue'},{r:6,c:14,color:'blue'},
+    {r:7,c:0,color:'light_green'},{r:7,c:1,color:'light_green'},{r:7,c:2,color:'light_green'},{r:7,c:3,color:'light_green'},{r:7,c:4,color:'light_green'},{r:7,c:5,color:'light_green'},{r:7,c:6,color:'light_green'},{r:7,c:7,color:'light_green'},{r:7,c:8,color:'light_green'},{r:7,c:9,color:'light_green'},{r:7,c:10,color:'light_green'},{r:7,c:11,color:'light_green'},{r:7,c:12,color:'light_green'},{r:7,c:13,color:'light_green'},{r:7,c:14,color:'light_green'},
+    {r:8,c:0,color:'green'},{r:8,c:1,color:'green'},{r:8,c:2,color:'green'},{r:8,c:3,color:'green'},{r:8,c:4,color:'green'},{r:8,c:5,color:'green'},{r:8,c:6,color:'green'},{r:8,c:7,color:'green'},{r:8,c:8,color:'green'},{r:8,c:9,color:'green'},{r:8,c:10,color:'green'},{r:8,c:11,color:'green'},{r:8,c:12,color:'green'},{r:8,c:13,color:'green'},{r:8,c:14,color:'green'},
+    {r:9,c:0,color:'green'},{r:9,c:1,color:'green'},{r:9,c:2,color:'green'},{r:9,c:3,color:'green'},{r:9,c:4,color:'green'},{r:9,c:5,color:'green'},{r:9,c:6,color:'green'},{r:9,c:7,color:'green'},{r:9,c:8,color:'green'},{r:9,c:9,color:'green'},{r:9,c:10,color:'green'},{r:9,c:11,color:'green'},{r:9,c:12,color:'green'},{r:9,c:13,color:'green'},{r:9,c:14,color:'green'}
+  ]},
+
+  // Level 9 — Key (rows:16, cols:9)
+  { rows:16, cols:9, name:'Key', tiles:[
+    {r:0,c:2,color:'yellow'},{r:0,c:3,color:'yellow'},{r:0,c:4,color:'yellow'},{r:0,c:5,color:'yellow'},{r:0,c:6,color:'yellow'},
+    {r:1,c:1,color:'yellow'},{r:1,c:2,color:'yellow'},{r:1,c:6,color:'yellow'},{r:1,c:7,color:'yellow'},
+    {r:2,c:0,color:'yellow'},{r:2,c:1,color:'yellow'},{r:2,c:2,color:'orange'},{r:2,c:3,color:'orange'},{r:2,c:4,color:'orange'},{r:2,c:5,color:'orange'},{r:2,c:6,color:'orange'},{r:2,c:7,color:'yellow'},{r:2,c:8,color:'yellow'},
+    {r:3,c:0,color:'yellow'},{r:3,c:1,color:'yellow'},{r:3,c:2,color:'orange'},{r:3,c:6,color:'orange'},{r:3,c:7,color:'yellow'},{r:3,c:8,color:'yellow'},
+    {r:4,c:0,color:'yellow'},{r:4,c:1,color:'yellow'},{r:4,c:2,color:'orange'},{r:4,c:6,color:'orange'},{r:4,c:7,color:'yellow'},{r:4,c:8,color:'yellow'},
+    {r:5,c:1,color:'yellow'},{r:5,c:2,color:'yellow'},{r:5,c:3,color:'orange'},{r:5,c:4,color:'orange'},{r:5,c:5,color:'orange'},{r:5,c:6,color:'yellow'},{r:5,c:7,color:'yellow'},
+    {r:6,c:2,color:'yellow'},{r:6,c:3,color:'yellow'},{r:6,c:4,color:'yellow'},{r:6,c:5,color:'yellow'},{r:6,c:6,color:'yellow'},
+    {r:7,c:3,color:'blue'},{r:7,c:4,color:'blue'},{r:7,c:5,color:'blue'},
+    {r:8,c:3,color:'blue'},{r:8,c:4,color:'blue'},{r:8,c:5,color:'blue'},
+    {r:9,c:3,color:'blue'},{r:9,c:4,color:'blue'},{r:9,c:5,color:'blue'},
+    {r:10,c:3,color:'blue'},{r:10,c:4,color:'blue'},{r:10,c:5,color:'blue'},
+    {r:11,c:3,color:'blue'},{r:11,c:4,color:'blue'},{r:11,c:5,color:'blue'},
+    {r:12,c:3,color:'blue'},{r:12,c:4,color:'blue'},{r:12,c:5,color:'blue'},{r:12,c:6,color:'violet'},{r:12,c:7,color:'violet'},
+    {r:13,c:3,color:'violet'},{r:13,c:4,color:'violet'},{r:13,c:5,color:'violet'},{r:13,c:6,color:'violet'},{r:13,c:7,color:'violet'},
+    {r:14,c:3,color:'violet'},{r:14,c:4,color:'violet'},{r:14,c:5,color:'violet'},{r:14,c:6,color:'violet'},{r:14,c:7,color:'violet'},
+    {r:15,c:3,color:'violet'},{r:15,c:4,color:'violet'},{r:15,c:5,color:'violet'}
+  ]},
+
+  // Level 10 — Anchor (rows:16, cols:13) — simplified shape
+  { rows:16, cols:13, name:'Anchor', tiles:[
+    {r:0,c:4,color:'blue'},{r:0,c:5,color:'blue'},{r:0,c:6,color:'blue'},{r:0,c:7,color:'blue'},{r:0,c:8,color:'blue'},
+    {r:1,c:3,color:'blue'},{r:1,c:4,color:'blue'},{r:1,c:5,color:'light_pink'},{r:1,c:6,color:'light_pink'},{r:1,c:7,color:'light_pink'},{r:1,c:8,color:'blue'},{r:1,c:9,color:'blue'},
+    {r:2,c:3,color:'blue'},{r:2,c:4,color:'blue'},{r:2,c:5,color:'light_pink'},{r:2,c:6,color:'light_pink'},{r:2,c:7,color:'light_pink'},{r:2,c:8,color:'blue'},{r:2,c:9,color:'blue'},
+    {r:3,c:4,color:'blue'},{r:3,c:5,color:'blue'},{r:3,c:6,color:'blue'},{r:3,c:7,color:'blue'},{r:3,c:8,color:'blue'},
+    {r:3,c:0,color:'yellow'},{r:3,c:1,color:'yellow'},{r:3,c:2,color:'yellow'},{r:3,c:10,color:'yellow'},{r:3,c:11,color:'yellow'},{r:3,c:12,color:'yellow'},
+    {r:4,c:0,color:'yellow'},{r:4,c:1,color:'yellow'},{r:4,c:2,color:'yellow'},{r:4,c:3,color:'yellow'},{r:4,c:4,color:'yellow'},{r:4,c:5,color:'yellow'},{r:4,c:6,color:'yellow'},{r:4,c:7,color:'yellow'},{r:4,c:8,color:'yellow'},{r:4,c:9,color:'yellow'},{r:4,c:10,color:'yellow'},{r:4,c:11,color:'yellow'},{r:4,c:12,color:'yellow'},
+    {r:5,c:0,color:'yellow'},{r:5,c:1,color:'yellow'},{r:5,c:2,color:'yellow'},{r:5,c:5,color:'violet'},{r:5,c:6,color:'violet'},{r:5,c:7,color:'violet'},{r:5,c:10,color:'yellow'},{r:5,c:11,color:'yellow'},{r:5,c:12,color:'yellow'},
+    {r:6,c:4,color:'light_blue'},{r:6,c:5,color:'violet'},{r:6,c:6,color:'violet'},{r:6,c:7,color:'violet'},{r:6,c:8,color:'light_blue'},
+    {r:7,c:4,color:'light_blue'},{r:7,c:5,color:'violet'},{r:7,c:6,color:'violet'},{r:7,c:7,color:'violet'},{r:7,c:8,color:'light_blue'},
+    {r:8,c:4,color:'light_blue'},{r:8,c:5,color:'violet'},{r:8,c:6,color:'violet'},{r:8,c:7,color:'violet'},{r:8,c:8,color:'light_blue'},
+    {r:9,c:4,color:'light_blue'},{r:9,c:5,color:'violet'},{r:9,c:6,color:'violet'},{r:9,c:7,color:'violet'},{r:9,c:8,color:'light_blue'},
+    {r:10,c:5,color:'violet'},{r:10,c:6,color:'violet'},{r:10,c:7,color:'violet'},
+    {r:11,c:3,color:'orange'},{r:11,c:4,color:'orange'},{r:11,c:5,color:'orange'},{r:11,c:6,color:'orange'},{r:11,c:7,color:'orange'},{r:11,c:8,color:'pink'},{r:11,c:9,color:'pink'},
+    {r:12,c:2,color:'orange'},{r:12,c:3,color:'orange'},{r:12,c:4,color:'orange'},{r:12,c:5,color:'orange'},{r:12,c:6,color:'orange'},{r:12,c:7,color:'pink'},{r:12,c:8,color:'pink'},{r:12,c:9,color:'pink'},
+    {r:13,c:0,color:'orange'},{r:13,c:1,color:'orange'},{r:13,c:2,color:'orange'},{r:13,c:3,color:'orange'},{r:13,c:4,color:'orange'},{r:13,c:5,color:'green'},{r:13,c:6,color:'green'},{r:13,c:7,color:'green'},{r:13,c:8,color:'pink'},{r:13,c:9,color:'pink'},{r:13,c:10,color:'pink'},
+    {r:14,c:0,color:'orange'},{r:14,c:1,color:'orange'},{r:14,c:2,color:'orange'},{r:14,c:3,color:'orange'},{r:14,c:4,color:'green'},{r:14,c:5,color:'green'},{r:14,c:6,color:'green'},{r:14,c:7,color:'green'},{r:14,c:8,color:'pink'},{r:14,c:9,color:'pink'},{r:14,c:10,color:'pink'},
+    {r:15,c:0,color:'orange'},{r:15,c:1,color:'orange'},{r:15,c:2,color:'orange'},{r:15,c:3,color:'orange'},{r:15,c:4,color:'green'},{r:15,c:5,color:'green'},{r:15,c:6,color:'green'},{r:15,c:7,color:'green'},{r:15,c:8,color:'pink'},{r:15,c:9,color:'pink'},{r:15,c:10,color:'pink'},{r:15,c:11,color:'pink'},{r:15,c:12,color:'pink'}
+  ]},
+
+  // Level 11 — Mushroom (rows:13, cols:11)
+  { rows:13, cols:11, name:'Mushroom', tiles:[
+    {r:0,c:3,color:'orange'},{r:0,c:4,color:'orange'},{r:0,c:5,color:'orange'},{r:0,c:6,color:'orange'},{r:0,c:7,color:'orange'},
+    {r:1,c:2,color:'orange'},{r:1,c:3,color:'orange'},{r:1,c:4,color:'orange'},{r:1,c:5,color:'orange'},{r:1,c:6,color:'orange'},{r:1,c:7,color:'orange'},{r:1,c:8,color:'orange'},
+    {r:2,c:1,color:'orange'},{r:2,c:2,color:'orange'},{r:2,c:3,color:'orange'},{r:2,c:4,color:'orange'},{r:2,c:5,color:'orange'},{r:2,c:6,color:'orange'},{r:2,c:7,color:'orange'},{r:2,c:8,color:'orange'},{r:2,c:9,color:'orange'},
+    {r:3,c:0,color:'orange'},{r:3,c:1,color:'orange'},{r:3,c:2,color:'orange'},{r:3,c:3,color:'orange'},{r:3,c:4,color:'orange'},{r:3,c:5,color:'orange'},{r:3,c:6,color:'orange'},{r:3,c:7,color:'orange'},{r:3,c:8,color:'orange'},{r:3,c:9,color:'orange'},{r:3,c:10,color:'orange'},
+    {r:4,c:0,color:'orange'},{r:4,c:1,color:'orange'},{r:4,c:2,color:'orange'},{r:4,c:3,color:'orange'},{r:4,c:4,color:'orange'},{r:4,c:5,color:'orange'},{r:4,c:6,color:'orange'},{r:4,c:7,color:'orange'},{r:4,c:8,color:'orange'},{r:4,c:9,color:'orange'},{r:4,c:10,color:'orange'},
+    {r:5,c:0,color:'light_pink'},{r:5,c:1,color:'light_pink'},{r:5,c:2,color:'light_pink'},{r:5,c:3,color:'light_pink'},{r:5,c:4,color:'light_pink'},{r:5,c:5,color:'light_pink'},{r:5,c:6,color:'light_pink'},{r:5,c:7,color:'light_pink'},{r:5,c:8,color:'light_pink'},{r:5,c:9,color:'light_pink'},{r:5,c:10,color:'light_pink'},
+    {r:6,c:1,color:'light_pink'},{r:6,c:2,color:'light_pink'},{r:6,c:3,color:'light_pink'},{r:6,c:4,color:'yellow'},{r:6,c:5,color:'yellow'},{r:6,c:6,color:'yellow'},{r:6,c:7,color:'yellow'},{r:6,c:8,color:'light_pink'},{r:6,c:9,color:'light_pink'},
+    {r:7,c:2,color:'light_pink'},{r:7,c:3,color:'light_pink'},{r:7,c:4,color:'yellow'},{r:7,c:5,color:'yellow'},{r:7,c:6,color:'yellow'},{r:7,c:7,color:'light_pink'},{r:7,c:8,color:'light_pink'},
+    {r:8,c:3,color:'yellow'},{r:8,c:4,color:'yellow'},{r:8,c:5,color:'yellow'},{r:8,c:6,color:'yellow'},{r:8,c:7,color:'yellow'},
+    {r:9,c:3,color:'yellow'},{r:9,c:4,color:'yellow'},{r:9,c:5,color:'yellow'},{r:9,c:6,color:'yellow'},{r:9,c:7,color:'yellow'},
+    {r:10,c:3,color:'yellow'},{r:10,c:4,color:'yellow'},{r:10,c:5,color:'yellow'},{r:10,c:6,color:'yellow'},{r:10,c:7,color:'yellow'},
+    {r:11,c:2,color:'light_green'},{r:11,c:3,color:'light_green'},{r:11,c:4,color:'light_green'},{r:11,c:5,color:'light_green'},{r:11,c:6,color:'light_green'},{r:11,c:7,color:'light_green'},{r:11,c:8,color:'light_green'},
+    {r:12,c:2,color:'light_green'},{r:12,c:3,color:'light_green'},{r:12,c:4,color:'light_green'},{r:12,c:5,color:'light_green'},{r:12,c:6,color:'light_green'},{r:12,c:7,color:'light_green'},{r:12,c:8,color:'light_green'}
+  ]},
+
+  // Level 12 — Planet (rows:12, cols:16)
+  { rows:12, cols:16, name:'Planet', tiles:[
+    {r:0,c:4,color:'right_dark'},{r:0,c:5,color:'right_dark'},{r:0,c:6,color:'right_dark'},{r:0,c:7,color:'right_dark'},{r:0,c:8,color:'right_dark'},{r:0,c:9,color:'right_dark'},
+    {r:1,c:3,color:'right_dark'},{r:1,c:4,color:'right_dark'},{r:1,c:7,color:'right_dark'},{r:1,c:8,color:'right_dark'},{r:1,c:9,color:'right_dark'},{r:1,c:10,color:'right_dark'},
+    {r:2,c:2,color:'right_dark'},{r:2,c:3,color:'right_dark'},{r:2,c:5,color:'blue'},{r:2,c:6,color:'blue'},{r:2,c:7,color:'blue'},{r:2,c:8,color:'blue'},{r:2,c:9,color:'blue'},{r:2,c:10,color:'right_dark'},{r:2,c:11,color:'right_dark'},
+    {r:3,c:0,color:'right_dark'},{r:3,c:1,color:'right_dark'},{r:3,c:2,color:'right_dark'},{r:3,c:4,color:'blue'},{r:3,c:5,color:'blue'},{r:3,c:6,color:'light_blue'},{r:3,c:7,color:'light_blue'},{r:3,c:8,color:'light_blue'},{r:3,c:9,color:'blue'},{r:3,c:10,color:'blue'},{r:3,c:11,color:'right_dark'},{r:3,c:12,color:'right_dark'},{r:3,c:13,color:'right_dark'},
+    {r:4,c:0,color:'right_dark'},{r:4,c:1,color:'right_dark'},{r:4,c:3,color:'blue'},{r:4,c:4,color:'blue'},{r:4,c:5,color:'light_blue'},{r:4,c:6,color:'light_blue'},{r:4,c:7,color:'light_blue'},{r:4,c:8,color:'light_blue'},{r:4,c:9,color:'light_blue'},{r:4,c:10,color:'blue'},{r:4,c:11,color:'blue'},{r:4,c:13,color:'right_dark'},{r:4,c:14,color:'right_dark'},
+    {r:5,c:0,color:'right_dark'},{r:5,c:1,color:'right_dark'},{r:5,c:3,color:'blue'},{r:5,c:4,color:'blue'},{r:5,c:5,color:'violet'},{r:5,c:6,color:'violet'},{r:5,c:7,color:'violet'},{r:5,c:8,color:'violet'},{r:5,c:9,color:'violet'},{r:5,c:10,color:'blue'},{r:5,c:11,color:'blue'},{r:5,c:14,color:'right_dark'},{r:5,c:15,color:'right_dark'},
+    {r:6,c:0,color:'right_dark'},{r:6,c:1,color:'right_dark'},{r:6,c:3,color:'blue'},{r:6,c:4,color:'blue'},{r:6,c:5,color:'violet'},{r:6,c:6,color:'violet'},{r:6,c:7,color:'violet'},{r:6,c:8,color:'violet'},{r:6,c:9,color:'violet'},{r:6,c:10,color:'blue'},{r:6,c:11,color:'blue'},{r:6,c:15,color:'right_dark'},
+    {r:7,c:0,color:'right_dark'},{r:7,c:3,color:'blue'},{r:7,c:4,color:'blue'},{r:7,c:5,color:'light_blue'},{r:7,c:6,color:'light_blue'},{r:7,c:7,color:'light_blue'},{r:7,c:8,color:'light_blue'},{r:7,c:9,color:'light_blue'},{r:7,c:10,color:'blue'},{r:7,c:11,color:'blue'},{r:7,c:15,color:'right_dark'},
+    {r:8,c:1,color:'right_dark'},{r:8,c:4,color:'blue'},{r:8,c:5,color:'blue'},{r:8,c:9,color:'blue'},{r:8,c:10,color:'blue'},{r:8,c:14,color:'right_dark'},{r:8,c:15,color:'right_dark'},
+    {r:9,c:1,color:'right_dark'},{r:9,c:2,color:'right_dark'},{r:9,c:5,color:'blue'},{r:9,c:6,color:'blue'},{r:9,c:7,color:'blue'},{r:9,c:8,color:'blue'},{r:9,c:9,color:'blue'},{r:9,c:13,color:'right_dark'},{r:9,c:14,color:'right_dark'},
+    {r:10,c:2,color:'right_dark'},{r:10,c:3,color:'right_dark'},{r:10,c:4,color:'right_dark'},{r:10,c:5,color:'right_dark'},{r:10,c:8,color:'right_dark'},{r:10,c:12,color:'right_dark'},{r:10,c:13,color:'right_dark'},
+    {r:11,c:4,color:'right_dark'},{r:11,c:5,color:'right_dark'},{r:11,c:6,color:'right_dark'},{r:11,c:7,color:'right_dark'},{r:11,c:8,color:'right_dark'},{r:11,c:9,color:'right_dark'},{r:11,c:10,color:'right_dark'},{r:11,c:11,color:'right_dark'},{r:11,c:12,color:'right_dark'}
+  ]}
+];
+
+// ─── Direction algorithm: nearest edge wins ──────────────────────────────────
+function assignDir(r, c, rows, cols) {
+  const dUp    = r;
+  const dDown  = rows - 1 - r;
+  const dLeft  = c;
+  const dRight = cols - 1 - c;
+  const min = Math.min(dUp, dDown, dLeft, dRight);
+  // tie-break: prefer up/down (vertical) over left/right
+  if (dUp === min)    return 'up';
+  if (dDown === min)  return 'down';
+  if (dLeft === min)  return 'left';
+  return 'right';
+}
+
+// ─── Solver (same as checker) ─────────────────────────────────────────────────
+const DIRS = { up:{dr:-1,dc:0}, down:{dr:1,dc:0}, left:{dr:0,dc:-1}, right:{dr:0,dc:1} };
+
+function solve(rows, cols, tilesWithDir) {
+  const grid = Array.from({length:rows}, () => Array(cols).fill(null));
+  for (const t of tilesWithDir) grid[t.r][t.c] = {dir:t.dir};
+
+  function canMove(r, c) {
+    const t = grid[r]?.[c]; if (!t) return false;
+    const d = DIRS[t.dir];
+    let cr = r+d.dr, cc = c+d.dc;
+    while (cr>=0 && cr<rows && cc>=0 && cc<cols) {
+      if (grid[cr][cc]) return false;
+      cr+=d.dr; cc+=d.dc;
+    }
+    return true;
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let r=0; r<rows; r++) for (let c=0; c<cols; c++) {
+      if (grid[r][c] && canMove(r,c)) { grid[r][c]=null; changed=true; }
+    }
+  }
+
+  const stuck = [];
+  for (let r=0; r<rows; r++) for (let c=0; c<cols; c++)
+    if (grid[r][c]) stuck.push(`(${r},${c},${grid[r][c].dir})`);
+  return { solved: stuck.length===0, stuck };
+}
+
+// ─── Generate ─────────────────────────────────────────────────────────────────
+let fullOutput = 'const LEVELS = [\n';
+
+function generate() {
+  const resultsEl = document.getElementById('results');
+  const outputEl  = document.getElementById('output');
+  let html = '';
+  fullOutput = 'const LEVELS = [\n';
+
+  for (let i = 0; i < SHAPES.length; i++) {
+    const s = SHAPES[i];
+    const tilesWithDir = s.tiles
+      .filter(t => !(s.name === 'Fish' && t.r === 11 && t.c === 0)) // remove placeholder
+      .map(t => ({ ...t, dir: assignDir(t.r, t.c, s.rows, s.cols) }));
+
+    const result = solve(s.rows, s.cols, tilesWithDir);
+    const ok = result.solved;
+
+    // Build tile array string
+    let tileStr = tilesWithDir.map(t =>
+      `{r:${t.r},c:${t.c},dir:'${t.dir}',color:'${t.color}'}`
+    ).join(',');
+
+    const levelCode = `  // Level ${i+1} — ${s.name}\n  {rows:${s.rows},cols:${s.cols},tiles:[\n    ${
+      tilesWithDir.map(t => `{r:${t.r},c:${t.c},dir:'${t.dir}',color:'${t.color}'}`).join(',\n    ')
+    }\n  ]},\n`;
+
+    fullOutput += levelCode;
+
+    html += `<div class="level-out">
+      <h3>${ok ? '✅' : '❌'} Level ${i+1} — ${s.name} (${tilesWithDir.length} tiles)</h3>
+      ${ok ? '' : `<div class="fail">Stuck: ${result.stuck.join(' ')}</div>`}
+    </div>`;
+  }
+
+  fullOutput += '];\n';
+  resultsEl.innerHTML = html;
+  outputEl.value = fullOutput;
+}
+
+function copyAll() {
+  const outputEl = document.getElementById('output');
+  outputEl.select();
+  document.execCommand('copy');
+  alert('Скопировано!');
+}
+</script>
+</body>
+</html>

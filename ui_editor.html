@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>UI Editor — Arrow Game</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none}
+body{font-family:'Segoe UI',sans-serif;background:#0d0d1a;color:#ddd;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* ── TOOLBAR ── */
+.toolbar{height:44px;background:#16162a;border-bottom:1px solid #2a2a45;display:flex;align-items:center;gap:0;flex-shrink:0;padding:0 12px}
+.tb-logo{font-size:13px;font-weight:700;color:#7c6dfc;margin-right:16px;letter-spacing:.5px}
+.tb-sep{width:1px;height:24px;background:#2a2a45;margin:0 8px}
+.tb-btn{padding:5px 10px;border:none;border-radius:6px;background:transparent;color:#aaa;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+.tb-btn:hover{background:#252540;color:white}
+.tb-btn.active{background:#7c6dfc22;color:#7c6dfc}
+.tb-btn.danger:hover{background:#e74c3c22;color:#e74c3c}
+.tb-screens{display:flex;gap:2px;margin-left:8px}
+.tb-screen{padding:4px 12px;border:none;border-radius:6px;background:transparent;color:#888;font-size:12px;cursor:pointer;transition:all .15s}
+.tb-screen:hover{background:#252540;color:white}
+.tb-screen.active{background:#7c6dfc;color:white;font-weight:600}
+.tb-spacer{flex:1}
+.tb-export{padding:6px 16px;border:none;border-radius:8px;background:linear-gradient(135deg,#7c6dfc,#5c4ddc);color:white;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.tb-export:hover{filter:brightness(1.15)}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* ── LEFT: LAYERS ── */
+.panel-left{width:200px;background:#13132a;border-right:1px solid #2a2a45;display:flex;flex-direction:column;flex-shrink:0}
+.panel-title{padding:8px 12px;font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #2a2a45}
+.layers{flex:1;overflow-y:auto;padding:4px 0}
+.layer-item{display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;border-left:2px solid transparent;transition:all .12s;font-size:12px}
+.layer-item:hover{background:#1e1e40}
+.layer-item.selected{background:#252550;border-left-color:#7c6dfc;color:white}
+.layer-thumb{width:22px;height:22px;border-radius:4px;background:#252540;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px}
+.layer-thumb img{width:100%;height:100%;object-fit:contain}
+.layer-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#bbb}
+.layer-item.selected .layer-name{color:white}
+.layer-del{opacity:0;width:16px;height:16px;border:none;background:transparent;color:#e74c3c;font-size:14px;cursor:pointer;line-height:1;padding:0;flex-shrink:0}
+.layer-item:hover .layer-del{opacity:1}
+.layer-empty{padding:20px 12px;font-size:12px;color:#444;text-align:center;line-height:1.6}
+
+/* ── CENTER: CANVAS ── */
+.canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0d0d1a}
+.canvas-scroll{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:30px}
+.phone-wrap{position:relative;flex-shrink:0}
+.phone-shell{position:absolute;inset:-12px;border-radius:50px;background:linear-gradient(145deg,#2a2a3a,#1a1a2a);box-shadow:0 0 0 1px #333,0 24px 60px rgba(0,0,0,.7);pointer-events:none;z-index:0}
+.phone-frame{width:375px;height:667px;position:relative;overflow:hidden;border-radius:38px;background:#2a2a3e;touch-action:none;z-index:1}
+.base-layer{display:none}
+.elements-layer{position:absolute;inset:0;z-index:10}
+.canvas-hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:10px;color:#333;pointer-events:none;z-index:200}
+
+/* ── ELEMENT ON CANVAS ── */
+.el{position:absolute;cursor:move;outline:none}
+.el:hover .el-border{opacity:.5}
+.el.selected .el-border{opacity:1}
+.el-border{position:absolute;inset:0;border:2px solid #7c6dfc;border-radius:2px;opacity:0;pointer-events:none}
+.el img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
+.el-text-inner{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;word-break:break-word}
+.el-rect-inner{width:100%;height:100%}
+
+/* RESIZE HANDLES */
+.el.selected .handles{display:block}
+.handles{display:none;position:absolute;inset:0;pointer-events:none}
+.h{position:absolute;width:10px;height:10px;background:#7c6dfc;border:2px solid white;border-radius:2px;pointer-events:all;z-index:10}
+.h-nw{top:-5px;left:-5px;cursor:nw-resize}
+.h-n {top:-5px;left:calc(50% - 5px);cursor:n-resize}
+.h-ne{top:-5px;right:-5px;cursor:ne-resize}
+.h-e {top:calc(50% - 5px);right:-5px;cursor:e-resize}
+.h-se{bottom:-5px;right:-5px;cursor:se-resize}
+.h-s {bottom:-5px;left:calc(50% - 5px);cursor:s-resize}
+.h-sw{bottom:-5px;left:-5px;cursor:sw-resize}
+.h-w {top:calc(50% - 5px);left:-5px;cursor:w-resize}
+.el-label{position:absolute;top:-18px;left:0;font-size:9px;color:#7c6dfc;white-space:nowrap;background:#13132a;padding:1px 4px;border-radius:3px;pointer-events:none}
+
+/* ── RIGHT: ASSETS + PROPS ── */
+.panel-right{width:260px;background:#13132a;border-left:1px solid #2a2a45;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.panel-tabs{display:flex;border-bottom:1px solid #2a2a45}
+.panel-tab{flex:1;padding:8px;text-align:center;font-size:11px;font-weight:700;color:#555;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.panel-tab:hover{color:#aaa}
+.panel-tab.active{color:#7c6dfc;border-bottom-color:#7c6dfc}
+.panel-body{flex:1;overflow-y:auto;padding:10px}
+
+/* ASSETS */
+.add-btns{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.add-btn{padding:8px;border:1px dashed #3a3a6a;border-radius:8px;background:transparent;color:#888;font-size:12px;cursor:pointer;transition:all .15s;text-align:center;width:100%}
+.add-btn:hover{border-color:#7c6dfc;color:#7c6dfc;background:#252550}
+.asset-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.asset-cell{position:relative;aspect-ratio:1;border-radius:8px;background:#1e1e40;border:1px solid #2a2a55;overflow:hidden;cursor:pointer;transition:all .15s}
+.asset-cell:hover{border-color:#7c6dfc;transform:scale(1.05)}
+.asset-cell img{width:100%;height:100%;object-fit:contain;padding:4px}
+.asset-cell .ac-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);font-size:8px;text-align:center;padding:2px;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asset-del{position:absolute;top:2px;right:2px;width:16px;height:16px;background:#e74c3c;border:none;border-radius:3px;color:white;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1;padding:0}
+.asset-cell:hover .asset-del{display:flex}
+.asset-section-title{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;margin:10px 0 6px}
+.text-btn{display:flex;gap:6px}
+
+/* PROPS */
+.prop-none{font-size:12px;color:#444;text-align:center;padding:20px 0;line-height:1.8}
+.prop-group{margin-bottom:14px}
+.prop-group-title{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.prop-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px}
+.prop-label{font-size:12px;color:#888;flex:1}
+.prop-input{background:#1e1e40;border:1px solid #3a3a6a;border-radius:6px;color:white;font-size:12px;padding:4px 7px;width:90px;text-align:right}
+.prop-input:focus{outline:none;border-color:#7c6dfc}
+.prop-input-full{width:100%;text-align:left}
+.prop-row input[type=color]{width:38px;height:26px;border:none;border-radius:6px;cursor:pointer;padding:2px;background:#252540}
+.prop-row input[type=range]{width:90px;accent-color:#7c6dfc}
+.range-val{font-size:11px;color:#7c6dfc;min-width:28px;text-align:right}
+.prop-btn{width:100%;padding:7px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:4px}
+.prop-btn-del{background:#e74c3c22;color:#e74c3c;border:1px solid #e74c3c44}
+.prop-btn-del:hover{background:#e74c3c;color:white}
+.prop-btn-dup{background:#7c6dfc22;color:#7c6dfc;border:1px solid #7c6dfc44}
+.prop-btn-dup:hover{background:#7c6dfc;color:white}
+.select-input{background:#1e1e40;border:1px solid #3a3a6a;border-radius:6px;color:white;font-size:12px;padding:4px 7px;width:100%}
+
+/* BASE SCREEN PREVIEWS */
+.bs-menu{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;background-size:cover;background-position:center}
+.bs-top{display:flex;justify-content:space-between;width:100%;padding:10px 12px}
+.bs-glass{background:rgba(255,255,255,.18);backdrop-filter:blur(6px);border-radius:12px;padding:6px 12px;font-size:13px;font-weight:800;color:white}
+.bs-sp{flex:1}
+.bs-loc-wrap{display:flex;align-items:center;gap:8px;width:100%;padding:0 14px;margin-bottom:12px}
+.bs-nav{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:white;flex-shrink:0}
+.bs-card{flex:1;padding:14px 12px;border-radius:16px;color:white;text-align:center;background:#3498DB}
+.bs-card-name{font-size:16px;font-weight:900;margin-bottom:6px}
+.bs-prog-wrap{display:flex;align-items:center;gap:6px;justify-content:center}
+.bs-prog-bar{flex:1;height:7px;background:rgba(0,0,0,.2);border-radius:8px;overflow:hidden}
+.bs-prog-fill{height:100%;width:30%;background:linear-gradient(90deg,#F1C40F,#F39C12);border-radius:8px}
+.bs-prog-text{font-size:11px;font-weight:800;background:rgba(0,0,0,.15);padding:2px 7px;border-radius:8px}
+.bs-play-wrap{position:relative;width:80%;max-width:280px;margin-bottom:16px}
+.bs-play-wrap img{width:100%;display:block}
+.bs-play-lvl{position:absolute;bottom:13%;left:0;right:0;text-align:center;font-size:12px;font-weight:900;color:white;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.bs-game{width:100%;height:100%;background:#F5F0E8;display:flex;flex-direction:column}
+.bs-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 12px}
+.bs-tg{background:rgba(0,0,0,.07);border-radius:12px;padding:6px 12px;font-size:13px;font-weight:800;color:#2C3E50}
+.bs-set{width:38px;height:38px;border-radius:12px;background:rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;font-size:18px}
+.bs-lvl{text-align:center;font-size:12px;opacity:.7;color:#2C3E50;margin-bottom:4px}
+.bs-board{flex:1;display:grid;place-items:center}
+.bs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.bs-tile{width:50px;height:50px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:white;box-shadow:0 3px 8px rgba(0,0,0,.15)}
+.bs-bot{display:flex;gap:10px;padding:10px 14px;justify-content:center}
+.bs-hint{padding:9px 18px;border-radius:50px;font-size:14px;font-weight:700;color:white;display:flex;align-items:center;gap:5px}
+.bs-modal-bg{width:100%;height:100%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+.bs-win-card{width:82%;border-radius:26px;padding:3px;background:linear-gradient(180deg,#FDF0D5,#FFF9EE,#FFF);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.bs-win-inner{background:linear-gradient(180deg,#FFFAF0,#FFF);border-radius:24px;overflow:hidden}
+.bs-win-top{background:rgba(255,220,100,.2);padding:18px 14px 12px;text-align:center}
+.bs-win-title{font-size:14px;font-weight:900;color:#2C3E50;margin-bottom:6px}
+.bs-win-stars{font-size:28px;letter-spacing:2px}
+.bs-win-badge{position:relative;margin:-15px 12px 0;z-index:2;background:linear-gradient(135deg,#F6C90E,#F39C12,#F6C90E);border-radius:14px;padding:8px 12px;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(243,156,18,.5)}
+.bs-win-coin{width:26px;height:26px;background:#E67E22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px}
+.bs-win-val{color:white;font-weight:900;font-size:16px}
+.bs-win-lower{padding:16px 12px 12px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.bs-win-info{font-size:11px;color:#7F8C8D}
+.bs-win-go{width:100%;padding:10px;border-radius:14px;background:linear-gradient(180deg,#4ADE80,#16A34A);color:white;font-size:13px;font-weight:900;text-align:center}
+.bs-win-back{width:100%;padding:8px;border-radius:14px;background:linear-gradient(180deg,#BDC3C7,#95A5A6);color:white;font-size:12px;font-weight:800;text-align:center}
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <span class="tb-logo">UI EDITOR</span>
+  <div class="tb-sep"></div>
+  <div class="tb-screens">
+    <button class="tb-screen active" onclick="switchScreen('menu')" id="scr-btn-menu">🗺 Меню</button>
+    <button class="tb-screen" onclick="switchScreen('game')" id="scr-btn-game">🎮 Игра</button>
+    <button class="tb-screen" onclick="switchScreen('win')" id="scr-btn-win">🎉 Победа</button>
+    <button class="tb-screen" onclick="switchScreen('settings')" id="scr-btn-settings">⚙️ Настройки</button>
+  </div>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="undo()" title="Отменить (Ctrl+Z)">↩ Отмена</button>
+  <button class="tb-btn" onclick="clearScreen()" title="Очистить экран">🗑 Очистить</button>
+  <div class="tb-spacer"></div>
+  <button class="tb-btn" onclick="importConfig()">📂 Импорт</button>
+  <button class="tb-export" onclick="exportConfig()">💾 Экспорт JSON</button>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT: LAYERS -->
+  <div class="panel-left">
+    <div class="panel-title">Слои</div>
+    <div class="layers" id="layers-list">
+      <div class="layer-empty">Добавьте элементы<br>из панели справа</div>
+    </div>
+  </div>
+
+  <!-- CENTER: CANVAS -->
+  <div class="canvas-area">
+    <div class="canvas-scroll" id="canvas-scroll">
+      <div class="phone-wrap" style="margin:12px">
+        <div class="phone-shell"></div>
+        <div class="phone-frame" id="canvas">
+          <div class="base-layer" id="base-layer"></div>
+          <div class="elements-layer" id="elements-layer"></div>
+          <div class="canvas-hint">375 × 667</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: ASSETS + PROPS -->
+  <div class="panel-right">
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchTab('assets')" id="tab-assets">Ресурсы</div>
+      <div class="panel-tab" onclick="switchTab('props')" id="tab-props">Свойства</div>
+    </div>
+    <div class="panel-body" id="panel-assets">
+      <div class="add-btns">
+        <label class="add-btn" for="inp-img">🖼 Добавить изображение / иконку</label>
+        <input type="file" id="inp-img" accept="image/*" multiple style="display:none" onchange="addImages(this)">
+        <button class="add-btn" onclick="addTextEl()">✏️ Добавить текст</button>
+        <button class="add-btn" onclick="addRectEl()">⬛ Добавить прямоугольник</button>
+      </div>
+      <div class="asset-section-title">Загруженные ресурсы</div>
+      <div class="asset-grid" id="asset-grid">
+      </div>
+    </div>
+    <div class="panel-body" id="panel-props" style="display:none">
+      <div class="prop-none" id="prop-none">Выберите элемент<br>на канвасе</div>
+      <div id="prop-content" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- HIDDEN FILE INPUT FOR CONFIG IMPORT -->
+<input type="file" id="inp-config" accept=".json" style="display:none" onchange="loadConfig(this)">
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const SCREENS = ['menu','game','win','settings'];
+const SCREEN_LABELS = {menu:'🗺 Меню',game:'🎮 Игра',win:'🎉 Победа',settings:'⚙️ Настройки'};
+
+let state = {
+  currentScreen: 'menu',
+  elements: {
+    menu: [], game: [], settings: [],
+    // Win screen elements pre-populated from Figma node 95:8377
+    // Scale: 375/1080=0.347. Y offsets from frame top (8369px in Figma).
+    win: [
+      { id:'el_w1',  type:'image', name:'Union (лучи)',              x:68,  y:80,  width:239, height:191, opacity:0.65, zIndex:1,  visible:true, src:'assets/Interface win/Union.png',          objectFit:'contain' },
+      { id:'el_w2',  type:'image', name:'Group 423 (кубок)',         x:48,  y:137, width:279, height:112, opacity:1,    zIndex:3,  visible:true, src:'assets/Interface win/Group 423.png',       objectFit:'contain' },
+      { id:'el_w3',  type:'rect',  name:'Banner BG (#2a90ff)',       x:46,  y:223, width:283, height:70,  opacity:1,    zIndex:2,  visible:true, background:'#2a90ff', borderRadius:8, border:'3px solid #261a30' },
+      { id:'el_w4',  type:'text',  name:'LEVEL текст',               x:46,  y:229, width:283, height:36,  opacity:1,    zIndex:4,  visible:true, content:'LEVEL 1', fontSize:28, fontWeight:'900', color:'#ffffff', textAlign:'center', shadow:true },
+      { id:'el_w5',  type:'text',  name:'COMPLETED! текст',          x:46,  y:265, width:283, height:26,  opacity:1,    zIndex:4,  visible:true, content:'COMPLETED!', fontSize:22, fontWeight:'900', color:'#ffffff', textAlign:'center', shadow:true },
+      { id:'el_w6',  type:'image', name:'Group 398 (награды)',       x:22,  y:305, width:332, height:120, opacity:1,    zIndex:2,  visible:true, src:'assets/Interface win/Group 398.png',       objectFit:'contain' },
+      { id:'el_w7',  type:'image', name:'Rectangle 19 (Continue)',   x:26,  y:434, width:158, height:54,  opacity:1,    zIndex:2,  visible:true, src:'assets/Interface win/Rectangle 19.png',    objectFit:'contain' },
+      { id:'el_w8',  type:'image', name:'CONTINUE текст',            x:44,  y:445, width:120, height:28,  opacity:1,    zIndex:3,  visible:true, src:'assets/Interface win/CONTINUE.png',        objectFit:'contain' },
+      { id:'el_w9',  type:'image', name:'Rectangle 19-1 (реклама)', x:192, y:434, width:158, height:54,  opacity:1,    zIndex:2,  visible:true, src:'assets/Interface win/Rectangle 19-1.png',  objectFit:'contain' },
+      { id:'el_w10', type:'image', name:'Group 385 (хлопушка)',      x:196, y:443, width:38,  height:38,  opacity:1,    zIndex:3,  visible:true, src:'assets/Interface win/Group 385.png',       objectFit:'contain' },
+      { id:'el_w11', type:'image', name:'Group 389 (x2 бейдж)',      x:297, y:420, width:46,  height:36,  opacity:1,    zIndex:4,  visible:true, src:'assets/Interface win/Group 389.png',       objectFit:'contain' },
+    ],
+  },
+  assets: [],
+  selectedId: null,
+  nextId: 20,
+  history: [],
+};
+
+// ═══════════════════════════════════════
+// SCREEN SWITCHING
+// ═══════════════════════════════════════
+function switchScreen(name) {
+  state.currentScreen = name;
+  state.selectedId = null;
+  SCREENS.forEach(s => {
+    document.getElementById('scr-btn-'+s).classList.toggle('active', s===name);
+  });
+  renderBase();
+  renderElements();
+  renderLayers();
+  renderProps();
+}
+
+// ═══════════════════════════════════════
+// BASE LAYER (non-editable background)
+// ═══════════════════════════════════════
+const BASE_SCREENS = {
+  menu: `<div class="bs-menu" id="bs-menu-div">
+    <div class="bs-top"><div class="bs-glass">❤️ 5</div><div class="bs-glass">🪙 120 <small>+</small></div></div>
+    <div class="bs-sp"></div>
+    <div class="bs-loc-wrap">
+      <div class="bs-nav">‹</div>
+      <div class="bs-card"><div class="bs-card-name">🏖️ Пляж</div>
+        <div class="bs-prog-wrap"><div class="bs-prog-bar"><div class="bs-prog-fill"></div></div><div class="bs-prog-text">3/10</div></div>
+      </div>
+      <div class="bs-nav">›</div>
+    </div>
+    <div class="bs-play-wrap"><img src="assets/buttons/btn_play.png" onerror="this.style.display='none'"><div class="bs-play-lvl">Уровень 4</div></div>
+  </div>`,
+  game: `<div class="bs-game">
+    <div class="bs-topbar"><div class="bs-tg">🪙 120</div><div class="bs-tg">❤️ 5</div><div class="bs-set">⚙️</div></div>
+    <div class="bs-lvl">Уровень 4</div>
+    <div class="bs-board"><div class="bs-grid" id="bs-board-grid"></div></div>
+    <div class="bs-bot"><div class="bs-hint" style="background:linear-gradient(135deg,#F39C12,#F1C40F)">💡 3</div><div class="bs-hint" style="background:linear-gradient(135deg,#E74C3C,#C0392B)">🔨 1</div></div>
+  </div>`,
+  win: `<div style="position:absolute;inset:0;background:linear-gradient(180deg,#482191 0%,#274caf 100%)"><div style="position:absolute;inset:0;background:#080b0d;opacity:0.85"></div><div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);background-size:20px 20px"></div></div>`,
+  settings: `<div class="bs-modal-bg">
+    <div style="background:white;border-radius:20px;padding:22px;width:82%;text-align:center">
+      <div style="font-size:18px;font-weight:900;margin-bottom:12px;color:#2C3E50">⚙️ Настройки</div>
+      <div style="background:linear-gradient(135deg,#3498DB,#2980B9);color:white;border-radius:12px;padding:11px;margin:5px 0;font-size:13px;font-weight:800">🔄 Заново</div>
+      <div style="background:linear-gradient(135deg,#3498DB,#2980B9);color:white;border-radius:12px;padding:11px;margin:5px 0;font-size:13px;font-weight:800">📋 Выбор уровней</div>
+      <div style="background:linear-gradient(135deg,#95A5A6,#7F8C8D);color:white;border-radius:12px;padding:11px;margin-top:8px;font-size:13px;font-weight:800">Закрыть</div>
+    </div>
+  </div>`,
+};
+
+function renderBase() {
+  const bl = document.getElementById('base-layer');
+  bl.innerHTML = BASE_SCREENS[state.currentScreen] || '';
+  // Fill board tiles
+  if (state.currentScreen === 'game') {
+    const grid = document.getElementById('bs-board-grid');
+    if (grid) {
+      const dirs=['↑','↓','←','→'], colors=['#4ECDC4','#FF6B6B','#F7DC6F','#82E0AA','#BB8FCE','#F0B27A'];
+      grid.innerHTML = Array.from({length:12},(_,i)=>`<div class="bs-tile" style="background:${colors[i%6]}">${dirs[i%4]}</div>`).join('');
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// ELEMENTS
+// ═══════════════════════════════════════
+function createElement(type, extra={}) {
+  const id = 'el_' + (state.nextId++);
+  const base = { id, type, name: type+' '+state.nextId, x:80, y:100, width:100, height:100, opacity:1, zIndex:state.nextId, visible:true };
+  const defaults = {
+    image:  { src:'', objectFit:'contain' },
+    text:   { content:'Текст', fontSize:18, fontWeight:'700', color:'#FFFFFF', textAlign:'center', shadow: true },
+    rect:   { background:'rgba(0,0,0,0.5)', borderRadius:12, border:'none' },
+  };
+  return Object.assign(base, defaults[type]||{}, extra);
+}
+
+function addElement(el) {
+  saveHistory();
+  state.elements[state.currentScreen].push(el);
+  state.selectedId = el.id;
+  renderElements();
+  renderLayers();
+  renderProps();
+  switchTab('props');
+}
+
+function getEl(id) {
+  return state.elements[state.currentScreen].find(e=>e.id===id);
+}
+
+function deleteElement(id) {
+  saveHistory();
+  state.elements[state.currentScreen] = state.elements[state.currentScreen].filter(e=>e.id!==id);
+  if (state.selectedId===id) state.selectedId=null;
+  renderElements();
+  renderLayers();
+  renderProps();
+}
+
+function duplicateElement(id) {
+  const el = getEl(id);
+  if (!el) return;
+  const copy = JSON.parse(JSON.stringify(el));
+  copy.id = 'el_' + (state.nextId++);
+  copy.name = el.name + ' копия';
+  copy.x += 16; copy.y += 16;
+  copy.zIndex = state.nextId;
+  addElement(copy);
+}
+
+// ═══════════════════════════════════════
+// RENDER ELEMENTS
+// ═══════════════════════════════════════
+function renderElements() {
+  const layer = document.getElementById('elements-layer');
+  layer.innerHTML = '';
+  const els = state.elements[state.currentScreen];
+  const sorted = [...els].sort((a,b)=>a.zIndex-b.zIndex);
+  sorted.forEach(el => {
+    if (!el.visible) return;
+    const div = document.createElement('div');
+    div.className = 'el' + (state.selectedId===el.id?' selected':'');
+    div.id = 'dom_'+el.id;
+    div.dataset.elId = el.id;
+    div.style.cssText = `left:${el.x}px;top:${el.y}px;width:${el.width}px;height:${el.height}px;opacity:${el.opacity};z-index:${el.zIndex}`;
+
+    if (el.type==='image') {
+      const img = document.createElement('img');
+      img.src = el.src;
+      img.draggable = false;
+      div.appendChild(img);
+    } else if (el.type==='text') {
+      const inner = document.createElement('div');
+      inner.className = 'el-text-inner';
+      inner.style.cssText = `font-size:${el.fontSize}px;font-weight:${el.fontWeight};color:${el.color};text-align:${el.textAlign};${el.shadow?'text-shadow:0 2px 8px rgba(0,0,0,.5)':''}`;
+      inner.textContent = el.content;
+      div.appendChild(inner);
+    } else if (el.type==='rect') {
+      const inner = document.createElement('div');
+      inner.className = 'el-rect-inner';
+      inner.style.cssText = `background:${el.background};border-radius:${el.borderRadius}px;border:${el.border}`;
+      div.appendChild(inner);
+    }
+
+    // Border overlay + label
+    const border = document.createElement('div'); border.className='el-border'; div.appendChild(border);
+    if (state.selectedId===el.id) {
+      const lbl = document.createElement('div'); lbl.className='el-label'; lbl.textContent=el.name; div.appendChild(lbl);
+    }
+    // Always add handles — CSS shows them only when .selected
+    const handles = document.createElement('div'); handles.className='handles';
+    ['nw','n','ne','e','se','s','sw','w'].forEach(dir=>{
+      const h = document.createElement('div');
+      h.className=`h h-${dir}`;
+      h.dataset.dir = dir;
+      handles.appendChild(h);
+    });
+    div.appendChild(handles);
+    layer.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════
+// LAYERS PANEL
+// ═══════════════════════════════════════
+function renderLayers() {
+  const list = document.getElementById('layers-list');
+  const els = state.elements[state.currentScreen];
+  if (!els.length) {
+    list.innerHTML = '<div class="layer-empty">Добавьте элементы<br>из панели справа</div>';
+    return;
+  }
+  list.innerHTML = '';
+  // Show in reverse zIndex order (top layers first)
+  const sorted = [...els].sort((a,b)=>b.zIndex-a.zIndex);
+  sorted.forEach(el => {
+    const item = document.createElement('div');
+    item.className = 'layer-item' + (state.selectedId===el.id?' selected':'');
+    item.onclick = () => { state.selectedId=el.id; renderElements(); renderLayers(); renderProps(); switchTab('props'); };
+
+    const thumb = document.createElement('div'); thumb.className='layer-thumb';
+    if (el.type==='image' && el.src) { const img=document.createElement('img'); img.src=el.src; thumb.appendChild(img); }
+    else if (el.type==='text') thumb.textContent='T';
+    else { thumb.style.background=el.background||'#333'; }
+
+    const name = document.createElement('span'); name.className='layer-name'; name.textContent=el.name;
+    const del = document.createElement('button'); del.className='layer-del'; del.textContent='✕';
+    del.onclick = e => { e.stopPropagation(); deleteElement(el.id); };
+
+    item.append(thumb, name, del);
+    list.appendChild(item);
+  });
+}
+
+// ═══════════════════════════════════════
+// PROPERTIES PANEL
+// ═══════════════════════════════════════
+function renderProps() {
+  const el = getEl(state.selectedId);
+  document.getElementById('prop-none').style.display = el ? 'none' : 'block';
+  const content = document.getElementById('prop-content');
+  content.style.display = el ? 'block' : 'none';
+  if (!el) return;
+
+  content.innerHTML = `
+    <div class="prop-group">
+      <div class="prop-group-title">Название</div>
+      <div class="prop-row">
+        <input class="prop-input prop-input-full" value="${escH(el.name)}" onchange="updateEl('${el.id}','name',this.value)">
+      </div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-group-title">Позиция и размер</div>
+      <div class="prop-row"><span class="prop-label">X</span><input class="prop-input" type="number" value="${Math.round(el.x)}" onchange="updateEl('${el.id}','x',+this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Y</span><input class="prop-input" type="number" value="${Math.round(el.y)}" onchange="updateEl('${el.id}','y',+this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Ширина</span><input class="prop-input" type="number" value="${Math.round(el.width)}" onchange="updateEl('${el.id}','width',+this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Высота</span><input class="prop-input" type="number" value="${Math.round(el.height)}" onchange="updateEl('${el.id}','height',+this.value)"></div>
+    </div>
+    <div class="prop-group">
+      <div class="prop-group-title">Вид</div>
+      <div class="prop-row"><span class="prop-label">Прозрачность</span>
+        <input type="range" min="0" max="1" step="0.05" value="${el.opacity}" oninput="updateEl('${el.id}','opacity',+this.value);this.nextElementSibling.textContent=Math.round(this.value*100)+'%'">
+        <span class="range-val">${Math.round(el.opacity*100)}%</span>
+      </div>
+      <div class="prop-row"><span class="prop-label">Z-индекс</span><input class="prop-input" type="number" value="${el.zIndex}" onchange="updateEl('${el.id}','zIndex',+this.value)"></div>
+    </div>
+    ${typeProps(el)}
+    <div class="prop-group">
+      <button class="prop-btn prop-btn-dup" onclick="duplicateElement('${el.id}')">⊕ Дублировать</button>
+      <button class="prop-btn prop-btn-del" onclick="deleteElement('${el.id}')">🗑 Удалить</button>
+    </div>`;
+}
+
+function typeProps(el) {
+  if (el.type==='image') return `
+    <div class="prop-group">
+      <div class="prop-group-title">Изображение</div>
+      <div class="prop-row"><span class="prop-label">Объект-fit</span>
+        <select class="select-input" onchange="updateEl('${el.id}','objectFit',this.value)">
+          ${['contain','cover','fill'].map(v=>`<option value="${v}"${el.objectFit===v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+  if (el.type==='text') return `
+    <div class="prop-group">
+      <div class="prop-group-title">Текст</div>
+      <div class="prop-row"><input class="prop-input prop-input-full" value="${escH(el.content)}" onchange="updateEl('${el.id}','content',this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Размер шрифта</span><input class="prop-input" type="number" value="${el.fontSize}" onchange="updateEl('${el.id}','fontSize',+this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Жирность</span>
+        <select class="select-input" style="width:90px" onchange="updateEl('${el.id}','fontWeight',this.value)">
+          ${['400','600','700','800','900'].map(v=>`<option value="${v}"${el.fontWeight==v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="prop-row"><span class="prop-label">Цвет</span><input type="color" value="${el.color||'#ffffff'}" onchange="updateEl('${el.id}','color',this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Выравнивание</span>
+        <select class="select-input" style="width:90px" onchange="updateEl('${el.id}','textAlign',this.value)">
+          ${['left','center','right'].map(v=>`<option value="${v}"${el.textAlign===v?' selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div class="prop-row"><span class="prop-label">Тень текста</span>
+        <input type="checkbox" ${el.shadow?'checked':''} onchange="updateEl('${el.id}','shadow',this.checked)">
+      </div>
+    </div>`;
+  if (el.type==='rect') return `
+    <div class="prop-group">
+      <div class="prop-group-title">Прямоугольник</div>
+      <div class="prop-row"><span class="prop-label">Цвет/фон</span><input type="color" value="${solidColor(el.background)}" onchange="updateEl('${el.id}','background',this.value)"></div>
+      <div class="prop-row"><span class="prop-label">Скругление</span><input class="prop-input" type="number" value="${el.borderRadius}" onchange="updateEl('${el.id}','borderRadius',+this.value)"></div>
+    </div>`;
+  return '';
+}
+
+function solidColor(bg) {
+  const m = bg && bg.match(/#[0-9a-fA-F]{6}/);
+  return m ? m[0] : '#000000';
+}
+
+function escH(s) { return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function updateEl(id, key, val) {
+  const el = getEl(id);
+  if (!el) return;
+  el[key] = val;
+  renderElements();
+  // Don't re-render layers/props to avoid losing input focus
+}
+
+// ═══════════════════════════════════════
+// ADDING ELEMENTS
+// ═══════════════════════════════════════
+function addImages(input) {
+  Array.from(input.files).forEach(file => {
+    const url = URL.createObjectURL(file);
+    const asset = { id:'ast_'+(state.nextId++), name:file.name, url };
+    state.assets.push(asset);
+    renderAssets();
+    // Auto-add to canvas
+    placeImageOnCanvas(url, file.name);
+  });
+  input.value='';
+}
+
+function placeImageOnCanvas(url, name) {
+  const img = new Image();
+  img.onload = () => {
+    const maxW=160, maxH=160;
+    let w=img.naturalWidth, h=img.naturalHeight;
+    if(w>maxW){h=h*maxW/w;w=maxW;}
+    if(h>maxH){w=w*maxH/h;h=maxH;}
+    const el = createElement('image',{ src:url, name:name.replace(/\.[^.]+$/,''), width:Math.round(w), height:Math.round(h), x:Math.round((375-w)/2), y:100 });
+    addElement(el);
+  };
+  img.src=url;
+}
+
+function addTextEl() {
+  const el = createElement('text',{ width:200, height:50, x:87, y:200 });
+  addElement(el);
+}
+
+function addRectEl() {
+  const el = createElement('rect',{ width:200, height:80, x:87, y:200 });
+  addElement(el);
+}
+
+function renderAssets() {
+  const grid = document.getElementById('asset-grid');
+  grid.innerHTML = '';
+  state.assets.forEach(ast => {
+    const cell = document.createElement('div'); cell.className='asset-cell';
+    cell.onclick = () => placeImageOnCanvas(ast.url, ast.name);
+    const img = document.createElement('img'); img.src=ast.url; img.draggable=false;
+    const lbl = document.createElement('div'); lbl.className='ac-label'; lbl.textContent=ast.name;
+    const del = document.createElement('button'); del.className='asset-del'; del.textContent='✕';
+    del.onclick = e=>{ e.stopPropagation(); state.assets=state.assets.filter(a=>a.id!==ast.id); renderAssets(); };
+    cell.append(img,lbl,del);
+    grid.appendChild(cell);
+  });
+}
+
+// ═══════════════════════════════════════
+// DRAG & RESIZE — единая делегация на канвасе
+// ═══════════════════════════════════════
+let drag   = { active:false, id:null, startMX:0, startMY:0, startEX:0, startEY:0 };
+let resize = { active:false, id:null, dir:'',   startMX:0, startMY:0, startBounds:{} };
+
+function initEvents() {
+  const canvas = document.getElementById('canvas');
+
+  // ── POINTER DOWN ── делегация по closest, захват указателя на канвасе
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+
+    const handleEl = e.target.closest('.h');
+    if (handleEl) {
+      // Resize handle
+      const elDiv = handleEl.closest('.el');
+      if (!elDiv) return;
+      const id = elDiv.dataset.elId;
+      const dir = handleEl.dataset.dir;
+      const el = getEl(id); if (!el) return;
+      resize = { active:true, id, dir, startMX:e.clientX, startMY:e.clientY,
+                 startBounds:{ x:el.x, y:el.y, w:el.width, h:el.height } };
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+
+    const elDiv = e.target.closest('.el');
+    if (elDiv) {
+      // Element drag
+      const id = elDiv.dataset.elId;
+      const el = getEl(id); if (!el) return;
+      drag = { active:true, id, startMX:e.clientX, startMY:e.clientY, startEX:el.x, startEY:el.y };
+      canvas.setPointerCapture(e.pointerId); // все pointermove/up идут на canvas
+      // Обновить выделение без перестройки DOM
+      if (state.selectedId !== id) {
+        const prevDom = state.selectedId ? document.getElementById('dom_'+state.selectedId) : null;
+        if (prevDom) prevDom.classList.remove('selected');
+        elDiv.classList.add('selected');
+        state.selectedId = id;
+        renderLayers(); renderProps(); switchTab('props');
+      }
+      return;
+    }
+
+    // Клик по пустому месту — снять выделение
+    if (state.selectedId) {
+      state.selectedId = null;
+      renderElements(); renderLayers(); renderProps();
+    }
+  });
+
+  // ── POINTER MOVE ── drag + resize
+  canvas.addEventListener('pointermove', e => {
+    if (drag.active) {
+      const dx = e.clientX - drag.startMX, dy = e.clientY - drag.startMY;
+      const el = getEl(drag.id); if (!el) return;
+      el.x = Math.round(drag.startEX + dx);
+      el.y = Math.round(drag.startEY + dy);
+      const dom = document.getElementById('dom_'+drag.id);
+      if (dom) { dom.style.left = el.x+'px'; dom.style.top = el.y+'px'; }
+    }
+    if (resize.active) {
+      const dx = e.clientX - resize.startMX, dy = e.clientY - resize.startMY;
+      const b = resize.startBounds, dir = resize.dir;
+      const el = getEl(resize.id); if (!el) return;
+      let {x,y,w,h} = b;
+      if (dir.includes('e')) w = Math.max(10, b.w+dx);
+      if (dir.includes('s')) h = Math.max(10, b.h+dy);
+      if (dir.includes('w')) { w = Math.max(10, b.w-dx); x = b.x+b.w-w; }
+      if (dir.includes('n')) { h = Math.max(10, b.h-dy); y = b.y+b.h-h; }
+      el.x = Math.round(x); el.y = Math.round(y); el.width = Math.round(w); el.height = Math.round(h);
+      const dom = document.getElementById('dom_'+resize.id);
+      if (dom) { dom.style.left=el.x+'px'; dom.style.top=el.y+'px'; dom.style.width=el.width+'px'; dom.style.height=el.height+'px'; }
+    }
+  });
+
+  // ── POINTER UP ── завершить drag/resize, полная синхронизация
+  canvas.addEventListener('pointerup', e => {
+    if (drag.active || resize.active) {
+      drag.active = false; resize.active = false;
+      renderElements(); renderLayers(); renderProps();
+    }
+    drag.active = false; resize.active = false;
+  });
+
+  canvas.addEventListener('pointercancel', () => {
+    drag.active = false; resize.active = false;
+  });
+}
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+function switchTab(name) {
+  document.getElementById('panel-assets').style.display=name==='assets'?'block':'none';
+  document.getElementById('panel-props').style.display=name==='props'?'block':'none';
+  document.getElementById('tab-assets').classList.toggle('active',name==='assets');
+  document.getElementById('tab-props').classList.toggle('active',name==='props');
+}
+
+// ═══════════════════════════════════════
+// HISTORY (UNDO)
+// ═══════════════════════════════════════
+function saveHistory() {
+  state.history.push(JSON.stringify(state.elements));
+  if(state.history.length>30) state.history.shift();
+}
+
+function undo() {
+  if(!state.history.length) return;
+  state.elements=JSON.parse(state.history.pop());
+  state.selectedId=null;
+  renderElements(); renderLayers(); renderProps();
+}
+
+// ═══════════════════════════════════════
+// CLEAR
+// ═══════════════════════════════════════
+function clearScreen() {
+  if(!state.elements[state.currentScreen].length) return;
+  if(!confirm(`Удалить все элементы на экране "${SCREEN_LABELS[state.currentScreen]}"?`)) return;
+  saveHistory();
+  state.elements[state.currentScreen]=[];
+  state.selectedId=null;
+  renderElements(); renderLayers(); renderProps();
+}
+
+// ═══════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════
+function exportConfig() {
+  // Replace blob URLs with asset names for export
+  const exportData = JSON.parse(JSON.stringify(state));
+  // Remove transient blob URLs — replace with file names
+  SCREENS.forEach(s => {
+    exportData.elements[s].forEach(el => {
+      if (el.type==='image' && el.src && el.src.startsWith('blob:')) {
+        const ast = state.assets.find(a=>a.url===el.src);
+        el.src = ast ? `assets/${guessFolder(ast.name)}/${ast.name}` : el.src;
+      }
+    });
+  });
+  delete exportData.history;
+  delete exportData.assets;
+
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ui_config.json'; a.click();
+
+  // Also show summary
+  let summary = [];
+  SCREENS.forEach(s => { const n=state.elements[s].length; if(n) summary.push(`${SCREEN_LABELS[s]}: ${n} эл.`); });
+  alert(`✅ Экспорт готов!\n\n${summary.join('\n') || 'Нет элементов'}\n\nОтправьте ui_config.json мне и скажите что применить в игру.`);
+}
+
+function guessFolder(name) {
+  name = name.toLowerCase();
+  if(name.startsWith('bg_')) return 'backgrounds';
+  if(name.startsWith('btn_')) return 'buttons';
+  if(name.startsWith('char_')) return 'characters';
+  if(name.startsWith('ic_')) return 'icons';
+  return 'ui';
+}
+
+function importConfig() { document.getElementById('inp-config').click(); }
+
+function loadConfig(input) {
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const data=JSON.parse(e.target.result);
+      if(data.elements) { state.elements=data.elements; state.nextId=data.nextId||100; }
+      renderBase(); renderElements(); renderLayers(); renderProps();
+      alert('✅ Конфиг загружен!');
+    } catch(err){ alert('Ошибка загрузки: '+err.message); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+// ═══════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.key==='Delete'||e.key==='Backspace') { if(state.selectedId) deleteElement(state.selectedId); }
+  if(e.ctrlKey&&e.key==='z') undo();
+  if(e.ctrlKey&&e.key==='d') { e.preventDefault(); if(state.selectedId) duplicateElement(state.selectedId); }
+  if(e.key==='Escape') { state.selectedId=null; renderElements(); renderLayers(); renderProps(); }
+  // Arrow keys to nudge
+  if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && state.selectedId) {
+    e.preventDefault();
+    const el=getEl(state.selectedId); if(!el) return;
+    const step=e.shiftKey?10:1;
+    if(e.key==='ArrowLeft') el.x-=step;
+    if(e.key==='ArrowRight') el.x+=step;
+    if(e.key==='ArrowUp') el.y-=step;
+    if(e.key==='ArrowDown') el.y+=step;
+    renderElements(); renderProps();
+  }
+});
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+switchScreen('win'); // открываем экран победы
+renderLayers();
+renderProps();
+initEvents();
+</script>
+</body>
+</html>
