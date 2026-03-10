@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Редактор уровней — Разбери Стрелки</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Nunito:wght@600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --text: #eee;
+    --text2: #aaa;
+    --green: #27AE60;
+    --orange: #E67E22;
+    --blue: #3498DB;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: 260px;
+    background: var(--surface);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .sidebar h1 { font-size: 16px; font-weight: 900; color: var(--accent); letter-spacing: -0.5px; }
+  .sidebar h3 { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .row { display: flex; gap: 6px; align-items: center; }
+
+  input[type="number"] {
+    padding: 7px 8px;
+    background: var(--bg); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    outline: none; transition: border-color 0.2s; width: 60px;
+  }
+  input[type="number"]:focus { border-color: var(--accent); }
+
+  .btn {
+    padding: 8px 12px; border: none; border-radius: 8px;
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 12px;
+    cursor: pointer; transition: all 0.15s; color: white; white-space: nowrap;
+  }
+  .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); filter: brightness(0.95); }
+  .btn-accent { background: var(--accent); }
+  .btn-green  { background: var(--green); }
+  .btn-blue   { background: var(--blue); }
+  .btn-orange { background: var(--orange); }
+  .btn-dark   { background: rgba(255,255,255,0.08); color: var(--text2); }
+  .btn-dark:hover { background: rgba(255,255,255,0.14); color: white; }
+  .btn-full   { width: 100%; }
+
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.06); flex-shrink: 0; }
+
+  /* File status */
+  .file-badge {
+    font-size: 11px; padding: 5px 8px; border-radius: 6px; font-weight: 700;
+    background: rgba(255,255,255,0.05); color: var(--text2);
+    border: 1px solid rgba(255,255,255,0.08); font-family: 'JetBrains Mono', monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .file-badge.connected { background: rgba(39,174,96,0.15); color: var(--green); border-color: rgba(39,174,96,0.3); }
+
+  /* Level picker */
+  .level-picker { display: flex; gap: 4px; align-items: center; }
+  .level-picker input[type="number"] { flex: 1; width: auto; text-align: center; font-size: 16px; font-weight: 700; padding: 8px; }
+  .lp-nav { width: 34px; height: 34px; border: none; border-radius: 8px; background: rgba(255,255,255,0.08); color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .lp-nav:hover { background: rgba(255,255,255,0.15); }
+  .level-badge { font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 6px; text-align: center; }
+  .level-badge.exists  { background: rgba(52,152,219,0.2); color: #3498db; }
+  .level-badge.new     { background: rgba(230,126,34,0.2); color: #E67E22; }
+  .level-badge.total   { color: var(--text2); }
+
+  /* ===== TOOLS ===== */
+  .tools-grid { display: flex; gap: 4px; }
+  .tool-btn {
+    flex: 1; height: 32px; border: 2px solid transparent; border-radius: 8px;
+    background: rgba(255,255,255,0.05); font-size: 16px; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center; justify-content: center; color: var(--text);
+  }
+  .tool-btn:hover { background: rgba(255,255,255,0.1); }
+  .tool-btn.active { border-color: var(--accent); background: rgba(233,69,96,0.15); }
+
+  /* ===== COLORS ===== */
+  .color-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .color-btn {
+    width: 20px; height: 20px; border: 2px solid transparent; border-radius: 50%;
+    cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+  }
+  .color-btn:hover { transform: scale(1.2); }
+  .color-btn.active { border-color: white; box-shadow: 0 0 8px rgba(255,255,255,0.5); transform: scale(1.15); }
+  .color-btn span { display: none; }
+
+  /* ===== MAIN AREA ===== */
+  .main {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px; gap: 12px; overflow: auto;
+  }
+
+  .board-info { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text2); }
+
+  .editor-board {
+    display: grid; gap: 3px; background: rgba(255,255,255,0.03);
+    padding: 10px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .editor-cell {
+    width: 60px; height: 60px; background: rgba(255,255,255,0.04);
+    border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; position: relative; font-size: 22px;
+  }
+  .editor-cell:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  .editor-cell.has-tile { border-color: rgba(255,255,255,0.2); }
+  .editor-cell.has-gear { background: rgba(127,140,141,0.3); border-color: rgba(127,140,141,0.5); }
+
+  .cell-arrow { font-size: 26px; font-weight: 900; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .cell-color-dot {
+    position: absolute; bottom: 3px; right: 3px;
+    width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3);
+  }
+  .cell-coords {
+    position: absolute; top: 2px; left: 3px;
+    font-size: 7px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.2);
+  }
+
+  /* ===== RIGHT PANEL ===== */
+  .panel-right {
+    width: 300px; background: var(--surface);
+    border-left: 1px solid rgba(255,255,255,0.06);
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    flex-shrink: 0; overflow-y: auto;
+  }
+
+  .panel-right h3 { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+
+  .save-big {
+    width: 100%; padding: 14px; font-size: 15px; border-radius: 10px;
+    background: linear-gradient(135deg, #27AE60, #1e8449);
+    box-shadow: 0 4px 16px rgba(39,174,96,0.3);
+  }
+  .save-big:hover { box-shadow: 0 6px 20px rgba(39,174,96,0.4); }
+
+  textarea {
+    width: 100%; flex: 1; min-height: 160px;
+    background: var(--bg); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; color: var(--green);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding: 10px; resize: none; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  /* ===== STATUS ===== */
+  .status {
+    font-size: 11px; padding: 7px 10px; border-radius: 7px; font-weight: 700;
+  }
+  .status.ok   { background: rgba(39,174,96,0.15); color: var(--green); }
+  .status.warn { background: rgba(231,76,60,0.15); color: var(--accent); }
+  .status.info { background: rgba(52,152,219,0.15); color: var(--blue); }
+
+  /* ===== LEVEL LIST ===== */
+  .level-list { display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow-y: auto; }
+  .level-item {
+    display: flex; align-items: center; gap: 8px; padding: 5px 8px;
+    border-radius: 7px; background: rgba(255,255,255,0.03);
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .level-item:hover { background: rgba(255,255,255,0.08); }
+  .level-item.active { background: rgba(233,69,96,0.2); border: 1px solid var(--accent); }
+  .level-item .lv-num { font-weight: 700; color: var(--accent); min-width: 28px; }
+  .level-item .lv-info { color: var(--text2); flex: 1; }
+  .level-item .lv-del {
+    background: none; border: none; color: rgba(255,255,255,0.2);
+    cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 4px;
+  }
+  .level-item .lv-del:hover { color: var(--accent); background: rgba(233,69,96,0.15); }
+
+  @media (max-width: 960px) {
+    body { flex-direction: column; overflow: auto; height: auto; }
+    .sidebar, .panel-right { width: 100%; }
+    .editor-cell { width: 48px; height: 48px; }
+  }
+
+  /* ===== API KEY INPUT ===== */
+  .api-key-row { display: flex; gap: 6px; align-items: center; }
+  .api-key-input {
+    flex: 1; padding: 7px 8px;
+    background: var(--bg); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .api-key-input:focus { border-color: var(--accent); }
+  .api-key-saved { font-size: 10px; color: var(--green); margin-top: 2px; display: none; }
+  .api-key-saved.show { display: block; }
+
+  /* ===== IMPORT OVERLAY ===== */
+  #importOverlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  #importOverlay.open { display: flex; }
+
+  #importModal {
+    background: var(--surface); border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 24px; width: 520px; max-width: 95vw; max-height: 90vh;
+    display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+  }
+  #importModal h2 { font-size: 15px; font-weight: 900; color: var(--accent); }
+
+  .import-drop-area {
+    border: 2px dashed rgba(255,255,255,0.15); border-radius: 12px;
+    padding: 32px 20px; text-align: center; cursor: pointer;
+    transition: all 0.2s; color: var(--text2); font-size: 13px;
+  }
+  .import-drop-area:hover, .import-drop-area.drag-over {
+    border-color: var(--blue); background: rgba(52,152,219,0.08);
+    color: var(--text);
+  }
+  .import-drop-area .drop-icon { font-size: 36px; display: block; margin-bottom: 8px; }
+
+  #importImgPreview {
+    display: none; max-width: 100%; max-height: 200px;
+    border-radius: 10px; object-fit: contain; border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  #importResultArea {
+    display: none; flex-direction: column; gap: 10px;
+  }
+  .import-result-grid {
+    display: grid; gap: 2px; background: rgba(255,255,255,0.02);
+    padding: 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+    max-height: 280px; overflow: auto;
+  }
+  .import-result-cell {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 900; border: 1px solid transparent;
+  }
+
+  .import-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .import-btns .btn { flex: 1; min-width: 100px; }
+</style>
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<div class="sidebar">
+  <h1>🎯 Редактор уровней</h1>
+
+  <!-- File Connection -->
+  <div class="field">
+    <h3>📁 Файл игры</h3>
+    <div class="btn-row">
+      <button class="btn btn-blue btn-full" onclick="connectGameFile()">📂 Открыть index.html</button>
+    </div>
+    <div class="file-badge" id="fileBadge">Файл не подключён</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Level Selector -->
+  <div class="field">
+    <h3>🎮 Уровень</h3>
+    <div class="level-picker">
+      <button class="lp-nav" onclick="changeLevel(-1)">‹</button>
+      <input type="number" id="levelNum" value="1" min="1" max="999" oninput="onLevelNumInput()">
+      <button class="lp-nav" onclick="changeLevel(+1)">›</button>
+    </div>
+    <div class="level-badge" id="levelBadge">—</div>
+    <button class="btn btn-accent btn-full" onclick="openLevel()">▶ Открыть уровень</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Board Size -->
+  <div class="field">
+    <h3>Размер поля</h3>
+    <div class="row">
+      <label style="font-size:12px;color:var(--text2)">Строки</label>
+      <input type="number" id="inputRows" value="5" min="2" max="25">
+      <label style="font-size:12px;color:var(--text2)">Столб.</label>
+      <input type="number" id="inputCols" value="5" min="2" max="25">
+    </div>
+    <button class="btn btn-dark btn-full" onclick="resizeBoard()">Применить размер</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Tools -->
+  <div class="field">
+    <h3>Инструмент</h3>
+    <div class="tools-grid">
+      <button class="tool-btn active" data-tool="up"     title="Вверх (↑)">↑</button>
+      <button class="tool-btn"        data-tool="down"   title="Вниз (↓)">↓</button>
+      <button class="tool-btn"        data-tool="left"   title="Влево (←)">←</button>
+      <button class="tool-btn"        data-tool="right"  title="Вправо (→)">→</button>
+      <button class="tool-btn"        data-tool="eraser" title="Стереть (E / ПКМ)">✕</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Colors -->
+  <div class="field">
+    <h3>Цвет</h3>
+    <div class="color-grid" id="colorGrid"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Actions -->
+  <div class="field">
+    <h3>Действия</h3>
+    <div class="btn-row">
+      <button class="btn btn-dark" onclick="clearBoard()">🗑️ Очистить</button>
+      <button class="btn btn-blue" onclick="testSolvable()">🧪 Проверить</button>
+    </div>
+    <button class="btn btn-orange btn-full" onclick="openImportModal()">🖼️ Импорт из картинки</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Level List (from file) -->
+  <div class="field">
+    <h3>Уровни в файле <span id="totalCount" style="color:var(--accent)"></span></h3>
+    <div class="level-list" id="levelList">
+      <div style="font-size:11px;color:#444;padding:8px 0">Подключи index.html</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN BOARD ===== -->
+<div class="main">
+  <div class="board-info" id="boardInfo">5×5 · 0 стрелок</div>
+  <div class="editor-board" id="editorBoard"></div>
+  <div id="solveStatus"></div>
+</div>
+
+<!-- ===== IMPORT OVERLAY ===== -->
+<div id="importOverlay">
+  <div id="importModal">
+    <h2>🖼️ Импорт уровня из картинки</h2>
+
+    <!-- API Key -->
+    <div class="field">
+      <h3>Claude API Key</h3>
+      <div class="api-key-row">
+        <input type="password" id="apiKeyInput" class="api-key-input" placeholder="sk-ant-api03-...">
+        <button class="btn btn-green" onclick="saveApiKey()">Сохранить</button>
+      </div>
+      <div class="api-key-saved" id="apiKeySaved">✅ Ключ сохранён</div>
+    </div>
+
+    <!-- Drop area / image preview -->
+    <div class="import-drop-area" id="importDropArea" onclick="triggerImagePick()">
+      <span class="drop-icon">📂</span>
+      Нажми или перетащи скриншот уровня
+    </div>
+    <img id="importImgPreview" alt="preview">
+
+    <!-- Status -->
+    <div id="importStatus"></div>
+
+    <!-- Result preview -->
+    <div id="importResultArea">
+      <h3>Результат распознавания:</h3>
+      <div class="import-result-grid" id="importResultGrid"></div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="import-btns">
+      <button class="btn btn-green" id="importApplyBtn" onclick="applyImport()" style="display:none">✅ Применить на поле</button>
+      <button class="btn btn-blue" id="importAnalyzeBtn" onclick="analyzeImage()" style="display:none">🔍 Анализировать</button>
+      <button class="btn btn-dark" onclick="closeImportModal()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RIGHT PANEL ===== -->
+<div class="panel-right">
+  <h3>💾 Сохранение в игру</h3>
+  <button class="btn save-big" onclick="saveToGame()">💾 Сохранить уровень в игру</button>
+  <div id="saveStatus"></div>
+
+  <div class="divider"></div>
+
+  <h3>Импорт / Экспорт</h3>
+  <button class="btn btn-blue btn-full" onclick="importFromJSON()">📥 Загрузить уровни из JSON</button>
+  <div id="importJsonStatus"></div>
+  <div class="divider"></div>
+  <div class="btn-row">
+    <button class="btn btn-green" onclick="exportJS()">📄 JS</button>
+    <button class="btn btn-blue"  onclick="exportJSON()">📋 JSON</button>
+    <button class="btn btn-dark"  onclick="copyExport()">📎 Копировать</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-orange btn-full" onclick="downloadExport()">💾 Скачать levels.js</button>
+  </div>
+  <textarea id="exportArea" placeholder="Здесь появится код..."></textarea>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+const ARROWS = { up:'↑', down:'↓', left:'←', right:'→' };
+
+const GAME_COLORS = [
+  { id:'blue',        hex:'#3498db', label:'Синий'    },
+  { id:'green',       hex:'#27ae60', label:'Зелёный'  },
+  { id:'light_blue',  hex:'#85c1e9', label:'Голубой'  },
+  { id:'light_green', hex:'#82e0aa', label:'С-зел'    },
+  { id:'light_pink',  hex:'#f1948a', label:'С-роз'    },
+  { id:'orange',      hex:'#e67e22', label:'Оранж'    },
+  { id:'pink',        hex:'#e91e63', label:'Розовый'  },
+  { id:'right_dark',  hex:'#8b1a1a', label:'Тёмный'   },
+  { id:'violet',      hex:'#9b59b6', label:'Фиолет'   },
+  { id:'yellow',      hex:'#f1c40f', label:'Жёлтый'   },
+];
+
+const COLORS_MAP = Object.fromEntries(GAME_COLORS.map(c => [c.id, c.hex]));
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+const DV = { up:[-1,0], down:[1,0], left:[0,-1], right:[0,1] };
+
+// ============================================================
+// STATE
+// ============================================================
+let rows = 5, cols = 5;
+let grid = {};          // key "r,c" => {dir, color} | {gear:true}
+let currentTool  = 'up';
+let currentColor = 'blue';
+
+// Game file state
+let gameFileHandle  = null;   // FileSystemFileHandle (modern API)
+let gameFileContent = '';     // raw text of index.html
+let gameLevels      = null;   // parsed LEVELS array
+let levelsRange     = null;   // {start, end} byte offsets of the [] in index.html
+let editingIdx      = -1;     // 0-based index of level being edited (-1 = new)
+
+// ============================================================
+// BUILD COLOR GRID
+// ============================================================
+(function buildColorGrid() {
+  const grid = document.getElementById('colorGrid');
+  GAME_COLORS.forEach((c, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'color-btn' + (i === 0 ? ' active' : '');
+    btn.dataset.color = c.id;
+    btn.style.background = c.hex;
+    btn.title = c.label + ' (' + (i+1 <= 9 ? i+1 : 0) + ')';
+    btn.innerHTML = `<span>${c.label}</span>`;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentColor = c.id;
+    });
+    grid.appendChild(btn);
+  });
+})();
+
+// ============================================================
+// FILE SYSTEM ACCESS API
+// ============================================================
+async function connectGameFile() {
+  if (!window.showOpenFilePicker) {
+    // Fallback: file input
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.html,.htm';
+    inp.onchange = async () => {
+      const file = inp.files[0];
+      if (!file) return;
+      gameFileContent = await file.text();
+      gameFileHandle = null; // no write-back in fallback mode
+      afterFileLoaded(file.name, /*readOnly=*/true);
+    };
+    inp.click();
+    return;
+  }
+
+  try {
+    [gameFileHandle] = await window.showOpenFilePicker({
+      types: [{ description: 'HTML Files', accept: {'text/html': ['.html','.htm']} }],
+      multiple: false,
+    });
+    const file = await gameFileHandle.getFile();
+    gameFileContent = await file.text();
+    afterFileLoaded(file.name, /*readOnly=*/false);
+  } catch(e) {
+    if (e.name !== 'AbortError') setStatus('saveStatus', 'warn', '❌ Ошибка: ' + e.message);
+  }
+}
+
+function afterFileLoaded(name, readOnly) {
+  const result = extractLevels(gameFileContent);
+  if (!result) {
+    setStatus('saveStatus', 'warn', '❌ Не найден массив LEVELS в файле');
+    return;
+  }
+  gameLevels   = result.levels;
+  levelsRange  = { start: result.start, end: result.end };
+
+  const badge = document.getElementById('fileBadge');
+  badge.textContent = (readOnly ? '👁 ' : '✏️ ') + name;
+  badge.className = 'file-badge connected';
+
+  if (readOnly) setStatus('saveStatus', 'info', '⚠️ Режим чтения (браузер не поддерживает запись). Используй Chrome.');
+
+  document.getElementById('totalCount').textContent = `(${gameLevels.length})`;
+  renderLevelList();
+  onLevelNumInput();
+}
+
+// ============================================================
+// EXTRACT / INJECT LEVELS
+// ============================================================
+function extractLevels(content) {
+  const marker = 'const LEVELS = ';
+  const markerIdx = content.indexOf(marker);
+  if (markerIdx === -1) return null;
+
+  const arrStart = content.indexOf('[', markerIdx);
+  if (arrStart === -1) return null;
+
+  let depth = 0, i = arrStart;
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '[' || ch === '{') depth++;
+    else if (ch === ']' || ch === '}') { depth--; if (depth === 0) break; }
+    i++;
+  }
+
+  const arrStr = content.slice(arrStart, i + 1);
+  try {
+    const levels = (new Function('return ' + arrStr))();
+    if (!Array.isArray(levels)) return null;
+    return { levels, start: arrStart, end: i + 1 };
+  } catch(e) {
+    console.error('LEVELS parse error', e);
+    return null;
+  }
+}
+
+function levelsToString(levels) {
+  const parts = levels.map((lv, i) => {
+    const tilesStr = (lv.tiles || [])
+      .map(t => `{r:${t.r},c:${t.c},dir:'${t.dir}',color:'${t.color}'}`)
+      .join(',');
+    let s = `  // Уровень ${i + 1}\n  {rows:${lv.rows},cols:${lv.cols}`;
+    if (lv.gear) s += `,gear:{r:${lv.gear.r},c:${lv.gear.c}}`;
+    s += `,tiles:[\n    ${tilesStr}\n  ]}`;
+    return s;
+  });
+  return `[\n${parts.join(',\n')}\n]`;
+}
+
+// ============================================================
+// OPEN / SAVE LEVEL
+// ============================================================
+function openLevel() {
+  const n = parseInt(document.getElementById('levelNum').value) || 1;
+  if (!gameLevels) { setStatus('saveStatus', 'warn', 'Сначала открой index.html'); return; }
+
+  if (n >= 1 && n <= gameLevels.length) {
+    editingIdx = n - 1;
+    loadLevelToEditor(gameLevels[editingIdx]);
+    setLevelBadge(n, true);
+    setStatus('solveStatus', 'info', `Открыт уровень ${n}`);
+  } else {
+    editingIdx = -1;
+    clearBoard();
+    setLevelBadge(n, false);
+    setStatus('solveStatus', 'info', `Уровень ${n} не существует — создай и сохрани`);
+  }
+}
+
+async function saveToGame() {
+  if (!gameLevels) { setStatus('saveStatus', 'warn', 'Сначала открой index.html'); return; }
+  const lv = currentToLevel();
+  if (!lv.tiles.length) { setStatus('saveStatus', 'warn', 'Добавь стрелки на поле'); return; }
+
+  const n = parseInt(document.getElementById('levelNum').value) || 1;
+
+  if (editingIdx >= 0 && editingIdx < gameLevels.length) {
+    // Update existing
+    gameLevels[editingIdx] = lv;
+    setStatus('saveStatus', 'ok', `✅ Уровень ${n} обновлён`);
+  } else {
+    // New level — insert at position n or append
+    const insertAt = Math.min(n - 1, gameLevels.length);
+    gameLevels.splice(insertAt, 0, lv);
+    editingIdx = insertAt;
+    setStatus('saveStatus', 'ok', `✅ Уровень ${insertAt + 1} добавлен (всего: ${gameLevels.length})`);
+    document.getElementById('levelNum').value = insertAt + 1;
+  }
+
+  document.getElementById('totalCount').textContent = `(${gameLevels.length})`;
+  renderLevelList();
+  setLevelBadge(editingIdx + 1, true);
+
+  // Write to file
+  if (!gameFileHandle) {
+    setStatus('saveStatus', 'warn', '⚠️ Сохранено в память. Нажми "Скачать levels.js" для экспорта (браузер без записи)');
+    exportJS();
+    return;
+  }
+
+  try {
+    const newArr = levelsToString(gameLevels);
+    const newContent = gameFileContent.slice(0, levelsRange.start)
+                     + newArr
+                     + gameFileContent.slice(levelsRange.end);
+
+    const writable = await gameFileHandle.createWritable();
+    await writable.write(newContent);
+    await writable.close();
+
+    // Update our cached content and range
+    gameFileContent = newContent;
+    const re = extractLevels(gameFileContent);
+    if (re) levelsRange = { start: re.start, end: re.end };
+
+    setStatus('saveStatus', 'ok', `✅ Сохранено в файл! Уровень ${editingIdx + 1}`);
+  } catch(e) {
+    setStatus('saveStatus', 'warn', '❌ Ошибка записи: ' + e.message);
+  }
+}
+
+// ============================================================
+// LEVEL NUM INPUT
+// ============================================================
+function changeLevel(delta) {
+  const inp = document.getElementById('levelNum');
+  inp.value = Math.max(1, (parseInt(inp.value) || 1) + delta);
+  onLevelNumInput();
+}
+
+function onLevelNumInput() {
+  const n = parseInt(document.getElementById('levelNum').value) || 1;
+  if (!gameLevels) { setLevelBadge(n, null); return; }
+  setLevelBadge(n, n <= gameLevels.length);
+}
+
+function setLevelBadge(n, exists) {
+  const badge = document.getElementById('levelBadge');
+  if (exists === null) { badge.className = 'level-badge'; badge.textContent = '—'; return; }
+  if (exists) {
+    const lv = gameLevels[n-1];
+    badge.className = 'level-badge exists';
+    badge.textContent = `Уровень ${n} · ${lv.rows}×${lv.cols} · ${lv.tiles.length} стрелок`;
+  } else {
+    badge.className = 'level-badge new';
+    badge.textContent = `Уровень ${n} не существует — будет создан`;
+  }
+}
+
+// ============================================================
+// BOARD RENDERING
+// ============================================================
+function renderBoard() {
+  const board = document.getElementById('editorBoard');
+  board.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
+  board.style.gridTemplateRows    = `repeat(${rows}, 60px)`;
+  board.innerHTML = '';
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'editor-cell';
+      cell.dataset.r = r; cell.dataset.c = c;
+
+      const coords = document.createElement('span');
+      coords.className = 'cell-coords';
+      coords.textContent = `${r},${c}`;
+      cell.appendChild(coords);
+
+      const key = `${r},${c}`;
+      const item = grid[key];
+      if (item) {
+        if (item.gear) {
+          cell.classList.add('has-gear');
+          cell.insertAdjacentHTML('beforeend', '⚙️');
+        } else {
+          cell.classList.add('has-tile');
+          cell.style.background = hexToRgba(COLORS_MAP[item.color], 0.2);
+          cell.style.borderColor = hexToRgba(COLORS_MAP[item.color], 0.6);
+
+          const arrow = document.createElement('span');
+          arrow.className = 'cell-arrow';
+          arrow.textContent = ARROWS[item.dir];
+          arrow.style.color = COLORS_MAP[item.color];
+          cell.appendChild(arrow);
+
+          const dot = document.createElement('span');
+          dot.className = 'cell-color-dot';
+          dot.style.background = COLORS_MAP[item.color];
+          cell.appendChild(dot);
+        }
+      }
+
+      cell.addEventListener('click', () => onCellClick(r, c));
+      cell.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        delete grid[`${r},${c}`];
+        renderBoard(); updateInfo();
+      });
+      board.appendChild(cell);
+    }
+  }
+  updateInfo();
+}
+
+function onCellClick(r, c) {
+  const key = `${r},${c}`;
+  if (currentTool === 'eraser') {
+    delete grid[key];
+  } else if (currentTool === 'gear') {
+    Object.keys(grid).forEach(k => { if (grid[k].gear) delete grid[k]; });
+    grid[key] = { gear: true };
+  } else {
+    grid[key] = { dir: currentTool, color: currentColor };
+  }
+  renderBoard();
+}
+
+function updateInfo() {
+  const tiles = Object.values(grid).filter(v => !v.gear).length;
+  const gears = Object.values(grid).filter(v => v.gear).length;
+  let s = `${rows}×${cols} · ${tiles} стрелок`;
+  if (gears) s += ` · ${gears} шестерёнок`;
+  document.getElementById('boardInfo').textContent = s;
+}
+
+// ============================================================
+// TOOLS
+// ============================================================
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTool = btn.dataset.tool;
+  });
+});
+
+// ============================================================
+// BOARD SIZE
+// ============================================================
+function resizeBoard() {
+  rows = Math.max(2, Math.min(25, parseInt(document.getElementById('inputRows').value) || 5));
+  cols = Math.max(2, Math.min(25, parseInt(document.getElementById('inputCols').value) || 5));
+  document.getElementById('inputRows').value = rows;
+  document.getElementById('inputCols').value = cols;
+  Object.keys(grid).forEach(k => {
+    const [r, c] = k.split(',').map(Number);
+    if (r >= rows || c >= cols) delete grid[k];
+  });
+  renderBoard();
+}
+
+function clearBoard() {
+  grid = {};
+  renderBoard();
+  document.getElementById('solveStatus').innerHTML = '';
+}
+
+// ============================================================
+// LEVEL CONVERSION
+// ============================================================
+function currentToLevel() {
+  const tiles = [], gear = null;
+  let g = null;
+  Object.entries(grid).forEach(([k, v]) => {
+    const [r, c] = k.split(',').map(Number);
+    if (v.gear) g = { r, c };
+    else tiles.push({ r, c, dir: v.dir, color: v.color });
+  });
+  const lv = { rows, cols, tiles };
+  if (g) lv.gear = g;
+  return lv;
+}
+
+function loadLevelToEditor(lv) {
+  rows = lv.rows; cols = lv.cols;
+  document.getElementById('inputRows').value = rows;
+  document.getElementById('inputCols').value = cols;
+  grid = {};
+  if (lv.gear) grid[`${lv.gear.r},${lv.gear.c}`] = { gear: true };
+  (lv.tiles || []).forEach(t => { grid[`${t.r},${t.c}`] = { dir: t.dir, color: t.color }; });
+  renderBoard();
+}
+
+// ============================================================
+// LEVEL LIST
+// ============================================================
+function renderLevelList() {
+  const list = document.getElementById('levelList');
+  if (!gameLevels || !gameLevels.length) {
+    list.innerHTML = '<div style="font-size:11px;color:#444;padding:8px 0">Нет уровней</div>';
+    return;
+  }
+  list.innerHTML = '';
+  gameLevels.forEach((lv, i) => {
+    const item = document.createElement('div');
+    item.className = 'level-item' + (i === editingIdx ? ' active' : '');
+    item.innerHTML = `
+      <span class="lv-num">${i+1}</span>
+      <span class="lv-info">${lv.rows}×${lv.cols} · ${(lv.tiles||[]).length}шт</span>
+      <button class="lv-del" title="Удалить">✕</button>
+    `;
+    item.querySelector('.lv-del').addEventListener('click', e => {
+      e.stopPropagation();
+      if (!confirm(`Удалить уровень ${i+1}?`)) return;
+      gameLevels.splice(i, 1);
+      if (editingIdx >= gameLevels.length) editingIdx = gameLevels.length - 1;
+      document.getElementById('totalCount').textContent = `(${gameLevels.length})`;
+      renderLevelList();
+    });
+    item.addEventListener('click', () => {
+      editingIdx = i;
+      document.getElementById('levelNum').value = i + 1;
+      loadLevelToEditor(lv);
+      setLevelBadge(i + 1, true);
+      renderLevelList();
+    });
+    list.appendChild(item);
+  });
+}
+
+// ============================================================
+// SOLVABILITY CHECK
+// ============================================================
+function testSolvable() {
+  const tiles = Object.entries(grid).filter(([, v]) => !v.gear);
+  if (!tiles.length) { setStatus('solveStatus', 'warn', 'Поле пустое!'); return; }
+
+  const g = {};
+  Object.entries(grid).forEach(([k, v]) => {
+    g[k] = v.gear ? 'G' : v.dir;
+  });
+
+  const ok = solveGreedy(g, 40);
+  setStatus('solveStatus', ok ? 'ok' : 'warn',
+    ok ? `✅ Решаемо! (${tiles.length} стрелок)` : '❌ Не решаемо! Измени расстановку.');
+}
+
+function canMoveCheck(g, r, c) {
+  const key = `${r},${c}`;
+  const d = g[key];
+  if (!d || d === 'G') return false;
+  const [dr, dc] = DV[d] || [0,0];
+  let cr = r + dr, cc = c + dc;
+  while (cr >= 0 && cr < rows && cc >= 0 && cc < cols) {
+    if (g[`${cr},${cc}`]) return false;
+    cr += dr; cc += dc;
+  }
+  return true;
+}
+
+function solveGreedy(g, tries) {
+  for (let t = 0; t < tries; t++) {
+    const gg = { ...g };
+    for (let step = 0; step < 200; step++) {
+      const rem = Object.entries(gg).filter(([, v]) => v !== 'G');
+      if (!rem.length) return true;
+      const movable = rem.filter(([k]) => {
+        const [r, c] = k.split(',').map(Number);
+        return canMoveCheck(gg, r, c);
+      });
+      if (!movable.length) break;
+      const pick = movable[Math.floor(Math.random() * movable.length)];
+      delete gg[pick[0]];
+    }
+  }
+  return false;
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function levelToJS(lv, num) {
+  const tiles = (lv.tiles || []).map(t => `{r:${t.r},c:${t.c},dir:'${t.dir}',color:'${t.color}'}`).join(',');
+  let s = `  // Уровень ${num}\n  {rows:${lv.rows},cols:${lv.cols}`;
+  if (lv.gear) s += `,gear:{r:${lv.gear.r},c:${lv.gear.c}}`;
+  s += `,tiles:[\n    ${tiles}\n  ]}`;
+  return s;
+}
+
+function exportJS() {
+  const src = (gameLevels && gameLevels.length) ? gameLevels : [currentToLevel()];
+  document.getElementById('exportArea').value =
+    `const LEVELS = [\n${src.map((lv, i) => levelToJS(lv, i+1)).join(',\n')}\n];\n`;
+}
+
+function exportJSON() {
+  const src = (gameLevels && gameLevels.length) ? gameLevels : [currentToLevel()];
+  document.getElementById('exportArea').value = JSON.stringify(src, null, 2);
+}
+
+function copyExport() {
+  const area = document.getElementById('exportArea');
+  if (!area.value) exportJS();
+  area.select();
+  document.execCommand('copy');
+  setStatus('saveStatus', 'ok', '📎 Скопировано!');
+}
+
+function importFromJSON() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json,.js';
+  inp.onchange = async () => {
+    const file = inp.files[0];
+    if (!file) return;
+    try {
+      let text = await file.text();
+      // Поддержка как чистого JSON-массива, так и "const LEVELS = [...];"
+      text = text.trim();
+      if (text.startsWith('const ') || text.startsWith('var ') || text.startsWith('let ')) {
+        const m = text.match(/=\s*(\[[\s\S]*\])\s*;?\s*$/);
+        if (!m) throw new Error('Не удалось найти массив уровней в JS файле');
+        text = m[1];
+      }
+      const levels = JSON.parse(text);
+      if (!Array.isArray(levels) || !levels.length) throw new Error('Файл пустой или неверный формат');
+
+      gameLevels = levels;
+      levelsRange = null; // не привязан к файлу — только в памяти
+      gameFileHandle = null;
+
+      document.getElementById('fileBadge').textContent = `📦 ${file.name}`;
+      document.getElementById('fileBadge').className = 'file-badge connected';
+      document.getElementById('totalCount').textContent = `(${gameLevels.length})`;
+      document.getElementById('saveStatus').innerHTML =
+        `<div class="status info">⚠️ Режим JSON — сохранение в index.html недоступно. Экспортируй через «Скачать».</div>`;
+
+      renderLevelList();
+      onLevelNumInput();
+      setStatus('importJsonStatus', 'ok', `✅ Загружено ${levels.length} уровней из ${file.name}`);
+    } catch(e) {
+      setStatus('importJsonStatus', 'warn', '❌ Ошибка: ' + e.message);
+    }
+  };
+  inp.click();
+}
+
+function downloadExport() {
+  exportJS();
+  const text = document.getElementById('exportArea').value;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'levels.js';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ============================================================
+// STATUS HELPERS
+// ============================================================
+function setStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="status ${type}">${msg}</div>`;
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  const toolMap = {
+    'ArrowUp':'up', 'ArrowDown':'down', 'ArrowLeft':'left', 'ArrowRight':'right',
+    'e':'eraser',
+  };
+  if (toolMap[e.key]) {
+    currentTool = toolMap[e.key];
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === currentTool));
+    e.preventDefault();
+  }
+
+  // 1–9, 0 for 10 colors
+  if (e.key >= '1' && e.key <= '9') {
+    const idx = parseInt(e.key) - 1;
+    if (idx < GAME_COLORS.length) {
+      currentColor = GAME_COLORS[idx].id;
+      document.querySelectorAll('.color-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    }
+  }
+  if (e.key === '0') {
+    const idx = 9;
+    if (idx < GAME_COLORS.length) {
+      currentColor = GAME_COLORS[idx].id;
+      document.querySelectorAll('.color-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+    }
+  }
+
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveToGame(); }
+});
+
+// ============================================================
+// IMAGE IMPORT — Claude Vision
+// ============================================================
+let importImageBase64 = null;
+let importImageType   = null;
+let importResultData  = null;
+
+const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+
+const IMPORT_PROMPT = `You are analyzing a screenshot of a puzzle game level.
+The level consists of a grid of arrow tiles. Each tile has:
+- A direction the arrow points: up (↑), down (↓), left (←), right (→)
+- A color
+
+Your task: identify the grid dimensions and every arrow tile in the image.
+
+Available colors (use EXACTLY these IDs in output):
+- blue       → medium blue
+- green      → medium green
+- light_blue → light sky blue / cyan
+- light_green→ light mint green
+- light_pink → light salmon / peach pink
+- orange     → orange
+- pink       → bright pink / magenta / hot pink
+- right_dark → dark red / maroon / dark brown
+- violet     → purple / violet
+- yellow     → yellow
+
+IMPORTANT: If a tile's color doesn't exactly match any of the above, use the CLOSEST match. The arrow DIRECTION is critical — make sure it is correct.
+
+Return ONLY valid JSON, no explanations, no markdown code blocks. Format:
+{
+  "rows": <number>,
+  "cols": <number>,
+  "tiles": [
+    {"r": <row 0-indexed>, "c": <col 0-indexed>, "dir": "<up|down|left|right>", "color": "<color_id>"},
+    ...
+  ]
+}
+
+Rows go top-to-bottom (r=0 is top row), columns go left-to-right (c=0 is left column).
+Only include cells that HAVE an arrow tile. Skip empty cells.`;
+
+function loadApiKey() {
+  const key = localStorage.getItem('claudeApiKey') || '';
+  document.getElementById('apiKeyInput').value = key;
+  if (key) document.getElementById('apiKeySaved').classList.add('show');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { alert('Введи API ключ'); return; }
+  localStorage.setItem('claudeApiKey', key);
+  document.getElementById('apiKeySaved').classList.add('show');
+}
+
+function openImportModal() {
+  document.getElementById('importOverlay').classList.add('open');
+  loadApiKey();
+  resetImportModal();
+}
+
+function closeImportModal() {
+  document.getElementById('importOverlay').classList.remove('open');
+}
+
+function resetImportModal() {
+  importImageBase64 = null;
+  importImageType   = null;
+  importResultData  = null;
+  document.getElementById('importImgPreview').style.display = 'none';
+  document.getElementById('importImgPreview').src = '';
+  document.getElementById('importStatus').innerHTML = '';
+  document.getElementById('importResultArea').style.display = 'none';
+  document.getElementById('importResultGrid').innerHTML = '';
+  document.getElementById('importApplyBtn').style.display = 'none';
+  document.getElementById('importAnalyzeBtn').style.display = 'none';
+  document.getElementById('importDropArea').style.display = 'block';
+}
+
+function triggerImagePick() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.onchange = e => {
+    const file = e.target.files[0];
+    if (file) loadImageFile(file);
+  };
+  inp.click();
+}
+
+function loadImageFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    // dataUrl = "data:image/png;base64,XXXXX"
+    const [meta, b64] = dataUrl.split(',');
+    importImageType   = meta.match(/data:([^;]+)/)[1]; // e.g. "image/png"
+    importImageBase64 = b64;
+
+    const preview = document.getElementById('importImgPreview');
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    document.getElementById('importDropArea').style.display = 'none';
+    document.getElementById('importAnalyzeBtn').style.display = 'block';
+    setImportStatus('info', `Картинка загружена: ${file.name}. Нажми «Анализировать».`);
+  };
+  reader.readAsDataURL(file);
+}
+
+function setImportStatus(type, msg) {
+  document.getElementById('importStatus').innerHTML = `<div class="status ${type}">${msg}</div>`;
+}
+
+async function analyzeImage() {
+  const apiKey = localStorage.getItem('claudeApiKey');
+  if (!apiKey) {
+    setImportStatus('warn', '❌ Введи Claude API Key и нажми «Сохранить»');
+    return;
+  }
+  if (!importImageBase64) {
+    setImportStatus('warn', '❌ Сначала загрузи картинку');
+    return;
+  }
+
+  document.getElementById('importAnalyzeBtn').disabled = true;
+  setImportStatus('info', '⏳ Отправляю в Claude AI... это займёт 5–15 секунд');
+
+  try {
+    const response = await fetch(CLAUDE_API_URL, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-calls': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-6',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: importImageType,
+                data: importImageBase64,
+              }
+            },
+            { type: 'text', text: IMPORT_PROMPT }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    // Extract JSON — Claude might wrap it in ```json ... ```
+    let jsonStr = text.trim();
+    const m = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (m) jsonStr = m[1].trim();
+
+    importResultData = JSON.parse(jsonStr);
+    showImportPreview(importResultData);
+    setImportStatus('ok', `✅ Распознано: ${importResultData.rows}×${importResultData.cols}, ${importResultData.tiles.length} стрелок`);
+    document.getElementById('importApplyBtn').style.display = 'block';
+
+  } catch (e) {
+    setImportStatus('warn', '❌ Ошибка: ' + e.message);
+  } finally {
+    document.getElementById('importAnalyzeBtn').disabled = false;
+  }
+}
+
+function showImportPreview(data) {
+  const { rows: r, cols: c, tiles } = data;
+  const container = document.getElementById('importResultGrid');
+  container.style.gridTemplateColumns = `repeat(${c}, 28px)`;
+  container.innerHTML = '';
+
+  // Build lookup
+  const map = {};
+  (tiles || []).forEach(t => { map[`${t.r},${t.c}`] = t; });
+
+  for (let row = 0; row < r; row++) {
+    for (let col = 0; col < c; col++) {
+      const cell = document.createElement('div');
+      cell.className = 'import-result-cell';
+      const t = map[`${row},${col}`];
+      if (t) {
+        const hex = COLORS_MAP[t.color] || '#888';
+        cell.style.background = hexToRgba(hex, 0.25);
+        cell.style.borderColor = hexToRgba(hex, 0.6);
+        cell.style.color = hex;
+        cell.textContent = ARROWS[t.dir] || '?';
+        cell.title = `${t.color} ${t.dir} (${row},${col})`;
+      } else {
+        cell.style.background = 'rgba(255,255,255,0.02)';
+        cell.style.borderColor = 'rgba(255,255,255,0.05)';
+      }
+      container.appendChild(cell);
+    }
+  }
+
+  document.getElementById('importResultArea').style.display = 'flex';
+}
+
+function applyImport() {
+  if (!importResultData) return;
+  loadLevelToEditor(importResultData);
+  closeImportModal();
+  setStatus('solveStatus', 'ok', '🖼️ Уровень загружен из картинки!');
+}
+
+// Drag & drop on the drop area
+(function setupImportDrop() {
+  const drop = document.getElementById('importDropArea');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImageFile(file);
+  });
+  // Close overlay on background click
+  document.getElementById('importOverlay').addEventListener('click', e => {
+    if (e.target.id === 'importOverlay') closeImportModal();
+  });
+})();
+
+// ============================================================
+// INIT
+// ============================================================
+renderBoard();
+</script>
+</body>
+</html>
