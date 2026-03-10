@@ -611,7 +611,7 @@ function openLevel() {
 }
 
 async function saveToGame() {
-  if (!gameLevels) { setStatus('saveStatus', 'warn', 'Сначала открой index.html'); return; }
+  if (!gameLevels) gameLevels = []; // standalone mode — работаем в памяти
   const lv = currentToLevel();
   if (!lv.tiles.length) { setStatus('saveStatus', 'warn', 'Добавь стрелки на поле'); return; }
 
