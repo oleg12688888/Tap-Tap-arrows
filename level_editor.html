@@ -621,16 +621,20 @@ async function saveToGame() {
   if (!lv.tiles.length) { setStatus('saveStatus', 'warn', 'Добавь стрелки на поле'); return; }
 
   const n = parseInt(document.getElementById('levelNum').value) || 1;
+  lv._n = n;
 
-  if (editingIdx >= 0 && editingIdx < gameLevels.length) {
-    // Update existing — сохраняем задуманный номер из предыдущего сохранения
-    lv._n = gameLevels[editingIdx]._n || n;
-    gameLevels[editingIdx] = lv;
-    setStatus('saveStatus', 'ok', `✅ Уровень ${lv._n} обновлён`);
+  // Ищем уровень с этим номером в уже сохранённых (по _n или по позиции)
+  const existingIdx = gameLevels.findIndex((l, i) => (l._n != null ? l._n : i + 1) === n);
+
+  if (existingIdx >= 0) {
+    // Обновляем существующий
+    gameLevels[existingIdx] = lv;
+    editingIdx = existingIdx;
+    setStatus('saveStatus', 'ok', `✅ Уровень ${n} обновлён`);
   } else {
-    // New level — просто добавляем без пустых плейсхолдеров
-    lv._n = n; // запоминаем задуманный номер для комментария в экспорте
-    const insertAt = Math.min(n - 1, gameLevels.length);
+    // Новый уровень — вставляем в отсортированную позицию
+    let insertAt = gameLevels.findIndex((l, i) => (l._n != null ? l._n : i + 1) > n);
+    if (insertAt === -1) insertAt = gameLevels.length;
     gameLevels.splice(insertAt, 0, lv);
     editingIdx = insertAt;
     setStatus('saveStatus', 'ok', `✅ Уровень ${n} добавлен (всего: ${gameLevels.length})`);
