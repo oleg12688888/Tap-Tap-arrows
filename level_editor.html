@@ -623,9 +623,10 @@ async function saveToGame() {
   const n = parseInt(document.getElementById('levelNum').value) || 1;
 
   if (editingIdx >= 0 && editingIdx < gameLevels.length) {
-    // Update existing
+    // Update existing — сохраняем задуманный номер из предыдущего сохранения
+    lv._n = gameLevels[editingIdx]._n || n;
     gameLevels[editingIdx] = lv;
-    setStatus('saveStatus', 'ok', `✅ Уровень ${n} обновлён`);
+    setStatus('saveStatus', 'ok', `✅ Уровень ${lv._n} обновлён`);
   } else {
     // New level — просто добавляем без пустых плейсхолдеров
     lv._n = n; // запоминаем задуманный номер для комментария в экспорте
@@ -678,6 +679,9 @@ function changeLevel(delta) {
 
 function onLevelNumInput() {
   const n = parseInt(document.getElementById('levelNum').value) || 1;
+  // Если номер не совпадает с тем что сейчас редактируется — сбрасываем привязку
+  const editingN = editingIdx >= 0 ? (gameLevels?.[editingIdx]?._n || editingIdx + 1) : -1;
+  if (n !== editingN) editingIdx = -1;
   if (!gameLevels) { setLevelBadge(n, null); return; }
   setLevelBadge(n, n <= gameLevels.length);
 }
@@ -989,7 +993,10 @@ function importFromJSON() {
   inp.click();
 }
 
-function downloadExport() {
+async function downloadExport() {
+  // Автосохраняем текущую доску в память если не подключён файл игры
+  const hasContent = Object.values(grid).some(v => !v.gear);
+  if (hasContent && !gameFileHandle) await saveToGame();
   exportJS();
   const text = document.getElementById('exportArea').value;
   const blob = new Blob([text], { type: 'text/plain' });
