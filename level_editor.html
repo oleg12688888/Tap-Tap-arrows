@@ -589,11 +589,12 @@ function onLevelNumInput() {
   setLevelBadge(n, n <= gameLevels.length);
 }
 
-function setLevelBadge(n, exists) {
+function setLevelBadge(n, exists, lvObj) {
   const badge = document.getElementById('levelBadge');
   if (exists === null) { badge.className = 'level-badge'; badge.textContent = '—'; return; }
   if (exists) {
-    const lv = gameLevels[n-1];
+    const lv = lvObj || gameLevels[n-1];
+    if (!lv) return;
     badge.className = 'level-badge exists';
     badge.textContent = `Уровень ${n} · ${lv.rows}×${lv.cols} · ${lv.tiles.length} стрелок`;
   } else {
@@ -769,8 +770,10 @@ function renderLevelList() {
       const lvNum = lv._n || (i + 1);
       document.getElementById('levelNum').value = lvNum;
       loadLevelToEditor(lv);
-      setLevelBadge(lvNum, true);
-      renderLevelList();
+      setLevelBadge(lvNum, true, lv);
+      document.querySelectorAll('#levelList .level-item').forEach((el, j) => {
+        el.classList.toggle('active', j === i);
+      });
     });
     list.appendChild(item);
   });
