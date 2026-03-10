@@ -622,12 +622,18 @@ async function saveToGame() {
     gameLevels[editingIdx] = lv;
     setStatus('saveStatus', 'ok', `✅ Уровень ${n} обновлён`);
   } else {
-    // New level — insert at position n or append
-    const insertAt = Math.min(n - 1, gameLevels.length);
-    gameLevels.splice(insertAt, 0, lv);
-    editingIdx = insertAt;
-    setStatus('saveStatus', 'ok', `✅ Уровень ${insertAt + 1} добавлен (всего: ${gameLevels.length})`);
-    document.getElementById('levelNum').value = insertAt + 1;
+    // New level — pad with empty placeholders if n > list length
+    const targetIdx = n - 1;
+    while (gameLevels.length < targetIdx) {
+      gameLevels.push({ rows: lv.rows, cols: lv.cols, tiles: [] });
+    }
+    if (gameLevels.length === targetIdx) {
+      gameLevels.push(lv);
+    } else {
+      gameLevels.splice(targetIdx, 0, lv);
+    }
+    editingIdx = targetIdx;
+    setStatus('saveStatus', 'ok', `✅ Уровень ${n} добавлен (всего: ${gameLevels.length})`);
   }
 
   document.getElementById('totalCount').textContent = `(${gameLevels.length})`;
