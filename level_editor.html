@@ -955,18 +955,22 @@ function importFromJSON() {
     if (!file) return;
     try {
       let text = await file.text();
-      // Поддержка как чистого JSON-массива, так и "const LEVELS = [...];"
       text = text.trim();
-      if (text.startsWith('const ') || text.startsWith('var ') || text.startsWith('let ')) {
-        const m = text.match(/=\s*(\[[\s\S]*\])\s*;?\s*$/);
-        if (!m) throw new Error('Не удалось найти массив уровней в JS файле');
-        text = m[1];
+      // JS файл с комментариями — парсим через Function, не JSON.parse
+      let levels;
+      if (text.startsWith('[')) {
+        // Чистый JSON массив
+        levels = JSON.parse(text);
+      } else {
+        // JS файл: const LEVELS = [...]; — может содержать // комментарии
+        const m = text.match(/=\s*(\[[\s\S]*?\])\s*;?\s*$/);
+        if (!m) throw new Error('Не удалось найти массив уровней в файле');
+        levels = (new Function('return ' + m[1]))();
       }
-      const levels = JSON.parse(text);
       if (!Array.isArray(levels) || !levels.length) throw new Error('Файл пустой или неверный формат');
 
       gameLevels = levels;
-      levelsRange = null; // не привязан к файлу — только в памяти
+      levelsRange = null;
       gameFileHandle = null;
 
       document.getElementById('fileBadge').textContent = `📦 ${file.name}`;
