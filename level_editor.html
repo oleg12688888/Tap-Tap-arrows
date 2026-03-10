@@ -210,67 +210,6 @@
     .editor-cell { width: 48px; height: 48px; }
   }
 
-  /* ===== API KEY INPUT ===== */
-  .api-key-row { display: flex; gap: 6px; align-items: center; }
-  .api-key-input {
-    flex: 1; padding: 7px 8px;
-    background: var(--bg); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px; color: var(--text);
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    outline: none; transition: border-color 0.2s;
-  }
-  .api-key-input:focus { border-color: var(--accent); }
-  .api-key-saved { font-size: 10px; color: var(--green); margin-top: 2px; display: none; }
-  .api-key-saved.show { display: block; }
-
-  /* ===== IMPORT OVERLAY ===== */
-  #importOverlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.75); z-index: 1000;
-    align-items: center; justify-content: center;
-  }
-  #importOverlay.open { display: flex; }
-
-  #importModal {
-    background: var(--surface); border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.1);
-    padding: 24px; width: 520px; max-width: 95vw; max-height: 90vh;
-    display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
-  }
-  #importModal h2 { font-size: 15px; font-weight: 900; color: var(--accent); }
-
-  .import-drop-area {
-    border: 2px dashed rgba(255,255,255,0.15); border-radius: 12px;
-    padding: 32px 20px; text-align: center; cursor: pointer;
-    transition: all 0.2s; color: var(--text2); font-size: 13px;
-  }
-  .import-drop-area:hover, .import-drop-area.drag-over {
-    border-color: var(--blue); background: rgba(52,152,219,0.08);
-    color: var(--text);
-  }
-  .import-drop-area .drop-icon { font-size: 36px; display: block; margin-bottom: 8px; }
-
-  #importImgPreview {
-    display: none; max-width: 100%; max-height: 200px;
-    border-radius: 10px; object-fit: contain; border: 1px solid rgba(255,255,255,0.1);
-  }
-
-  #importResultArea {
-    display: none; flex-direction: column; gap: 10px;
-  }
-  .import-result-grid {
-    display: grid; gap: 2px; background: rgba(255,255,255,0.02);
-    padding: 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
-    max-height: 280px; overflow: auto;
-  }
-  .import-result-cell {
-    width: 28px; height: 28px; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 900; border: 1px solid transparent;
-  }
-
-  .import-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-  .import-btns .btn { flex: 1; min-width: 100px; }
 </style>
 </head>
 <body>
@@ -347,7 +286,6 @@
       <button class="btn btn-dark" onclick="clearBoard()">🗑️ Очистить</button>
       <button class="btn btn-blue" onclick="testSolvable()">🧪 Проверить</button>
     </div>
-    <button class="btn btn-orange btn-full" onclick="openImportModal()">🖼️ Импорт из картинки</button>
   </div>
 
   <div class="divider"></div>
@@ -368,45 +306,6 @@
   <div id="solveStatus"></div>
 </div>
 
-<!-- ===== IMPORT OVERLAY ===== -->
-<div id="importOverlay">
-  <div id="importModal">
-    <h2>🖼️ Импорт уровня из картинки</h2>
-
-    <!-- API Key -->
-    <div class="field">
-      <h3>Claude API Key</h3>
-      <div class="api-key-row">
-        <input type="password" id="apiKeyInput" class="api-key-input" placeholder="sk-ant-api03-...">
-        <button class="btn btn-green" onclick="saveApiKey()">Сохранить</button>
-      </div>
-      <div class="api-key-saved" id="apiKeySaved">✅ Ключ сохранён</div>
-    </div>
-
-    <!-- Drop area / image preview -->
-    <div class="import-drop-area" id="importDropArea" onclick="triggerImagePick()">
-      <span class="drop-icon">📂</span>
-      Нажми или перетащи скриншот уровня
-    </div>
-    <img id="importImgPreview" alt="preview">
-
-    <!-- Status -->
-    <div id="importStatus"></div>
-
-    <!-- Result preview -->
-    <div id="importResultArea">
-      <h3>Результат распознавания:</h3>
-      <div class="import-result-grid" id="importResultGrid"></div>
-    </div>
-
-    <!-- Buttons -->
-    <div class="import-btns">
-      <button class="btn btn-green" id="importApplyBtn" onclick="applyImport()" style="display:none">✅ Применить на поле</button>
-      <button class="btn btn-blue" id="importAnalyzeBtn" onclick="analyzeImage()" style="display:none">🔍 Анализировать</button>
-      <button class="btn btn-dark" onclick="closeImportModal()">Закрыть</button>
-    </div>
-  </div>
-</div>
 
 <!-- ===== RIGHT PANEL ===== -->
 <div class="panel-right">
@@ -849,16 +748,17 @@ function renderLevelList() {
   }
   list.innerHTML = '';
   gameLevels.forEach((lv, i) => {
+    const lvNum = lv._n || (i + 1);
     const item = document.createElement('div');
     item.className = 'level-item' + (i === editingIdx ? ' active' : '');
     item.innerHTML = `
-      <span class="lv-num">${i+1}</span>
+      <span class="lv-num">${lvNum}</span>
       <span class="lv-info">${lv.rows}×${lv.cols} · ${(lv.tiles||[]).length}шт</span>
       <button class="lv-del" title="Удалить">✕</button>
     `;
     item.querySelector('.lv-del').addEventListener('click', e => {
       e.stopPropagation();
-      if (!confirm(`Удалить уровень ${i+1}?`)) return;
+      if (!confirm(`Удалить уровень ${lvNum}?`)) return;
       gameLevels.splice(i, 1);
       if (editingIdx >= gameLevels.length) editingIdx = gameLevels.length - 1;
       document.getElementById('totalCount').textContent = `(${gameLevels.length})`;
@@ -1062,244 +962,6 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveToGame(); }
 });
 
-// ============================================================
-// IMAGE IMPORT — Claude Vision
-// ============================================================
-let importImageBase64 = null;
-let importImageType   = null;
-let importResultData  = null;
-
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
-
-const IMPORT_PROMPT = `You are analyzing a screenshot of a puzzle game level.
-The level consists of a grid of arrow tiles. Each tile has:
-- A direction the arrow points: up (↑), down (↓), left (←), right (→)
-- A color
-
-Your task: identify the grid dimensions and every arrow tile in the image.
-
-Available colors (use EXACTLY these IDs in output):
-- blue       → medium blue
-- green      → medium green
-- light_blue → light sky blue / cyan
-- light_green→ light mint green
-- light_pink → light salmon / peach pink
-- orange     → orange
-- pink       → bright pink / magenta / hot pink
-- right_dark → dark red / maroon / dark brown
-- violet     → purple / violet
-- yellow     → yellow
-
-IMPORTANT: If a tile's color doesn't exactly match any of the above, use the CLOSEST match. The arrow DIRECTION is critical — make sure it is correct.
-
-Return ONLY valid JSON, no explanations, no markdown code blocks. Format:
-{
-  "rows": <number>,
-  "cols": <number>,
-  "tiles": [
-    {"r": <row 0-indexed>, "c": <col 0-indexed>, "dir": "<up|down|left|right>", "color": "<color_id>"},
-    ...
-  ]
-}
-
-Rows go top-to-bottom (r=0 is top row), columns go left-to-right (c=0 is left column).
-Only include cells that HAVE an arrow tile. Skip empty cells.`;
-
-function loadApiKey() {
-  const key = localStorage.getItem('claudeApiKey') || '';
-  document.getElementById('apiKeyInput').value = key;
-  if (key) document.getElementById('apiKeySaved').classList.add('show');
-}
-
-function saveApiKey() {
-  const key = document.getElementById('apiKeyInput').value.trim();
-  if (!key) { alert('Введи API ключ'); return; }
-  localStorage.setItem('claudeApiKey', key);
-  document.getElementById('apiKeySaved').classList.add('show');
-}
-
-function openImportModal() {
-  document.getElementById('importOverlay').classList.add('open');
-  loadApiKey();
-  resetImportModal();
-}
-
-function closeImportModal() {
-  document.getElementById('importOverlay').classList.remove('open');
-}
-
-function resetImportModal() {
-  importImageBase64 = null;
-  importImageType   = null;
-  importResultData  = null;
-  document.getElementById('importImgPreview').style.display = 'none';
-  document.getElementById('importImgPreview').src = '';
-  document.getElementById('importStatus').innerHTML = '';
-  document.getElementById('importResultArea').style.display = 'none';
-  document.getElementById('importResultGrid').innerHTML = '';
-  document.getElementById('importApplyBtn').style.display = 'none';
-  document.getElementById('importAnalyzeBtn').style.display = 'none';
-  document.getElementById('importDropArea').style.display = 'block';
-}
-
-function triggerImagePick() {
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = 'image/*';
-  inp.onchange = e => {
-    const file = e.target.files[0];
-    if (file) loadImageFile(file);
-  };
-  inp.click();
-}
-
-function loadImageFile(file) {
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const dataUrl = ev.target.result;
-    // dataUrl = "data:image/png;base64,XXXXX"
-    const [meta, b64] = dataUrl.split(',');
-    importImageType   = meta.match(/data:([^;]+)/)[1]; // e.g. "image/png"
-    importImageBase64 = b64;
-
-    const preview = document.getElementById('importImgPreview');
-    preview.src = dataUrl;
-    preview.style.display = 'block';
-    document.getElementById('importDropArea').style.display = 'none';
-    document.getElementById('importAnalyzeBtn').style.display = 'block';
-    setImportStatus('info', `Картинка загружена: ${file.name}. Нажми «Анализировать».`);
-  };
-  reader.readAsDataURL(file);
-}
-
-function setImportStatus(type, msg) {
-  document.getElementById('importStatus').innerHTML = `<div class="status ${type}">${msg}</div>`;
-}
-
-async function analyzeImage() {
-  const apiKey = localStorage.getItem('claudeApiKey');
-  if (!apiKey) {
-    setImportStatus('warn', '❌ Введи Claude API Key и нажми «Сохранить»');
-    return;
-  }
-  if (!importImageBase64) {
-    setImportStatus('warn', '❌ Сначала загрузи картинку');
-    return;
-  }
-
-  document.getElementById('importAnalyzeBtn').disabled = true;
-  setImportStatus('info', '⏳ Отправляю в Claude AI... это займёт 5–15 секунд');
-
-  try {
-    const response = await fetch(CLAUDE_API_URL, {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-calls': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-6',
-        max_tokens: 2048,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: importImageType,
-                data: importImageBase64,
-              }
-            },
-            { type: 'text', text: IMPORT_PROMPT }
-          ]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const text = data.content?.[0]?.text || '';
-
-    // Extract JSON — Claude might wrap it in ```json ... ```
-    let jsonStr = text.trim();
-    const m = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (m) jsonStr = m[1].trim();
-
-    importResultData = JSON.parse(jsonStr);
-    showImportPreview(importResultData);
-    setImportStatus('ok', `✅ Распознано: ${importResultData.rows}×${importResultData.cols}, ${importResultData.tiles.length} стрелок`);
-    document.getElementById('importApplyBtn').style.display = 'block';
-
-  } catch (e) {
-    setImportStatus('warn', '❌ Ошибка: ' + e.message);
-  } finally {
-    document.getElementById('importAnalyzeBtn').disabled = false;
-  }
-}
-
-function showImportPreview(data) {
-  const { rows: r, cols: c, tiles } = data;
-  const container = document.getElementById('importResultGrid');
-  container.style.gridTemplateColumns = `repeat(${c}, 28px)`;
-  container.innerHTML = '';
-
-  // Build lookup
-  const map = {};
-  (tiles || []).forEach(t => { map[`${t.r},${t.c}`] = t; });
-
-  for (let row = 0; row < r; row++) {
-    for (let col = 0; col < c; col++) {
-      const cell = document.createElement('div');
-      cell.className = 'import-result-cell';
-      const t = map[`${row},${col}`];
-      if (t) {
-        const hex = COLORS_MAP[t.color] || '#888';
-        cell.style.background = hexToRgba(hex, 0.25);
-        cell.style.borderColor = hexToRgba(hex, 0.6);
-        cell.style.color = hex;
-        cell.textContent = ARROWS[t.dir] || '?';
-        cell.title = `${t.color} ${t.dir} (${row},${col})`;
-      } else {
-        cell.style.background = 'rgba(255,255,255,0.02)';
-        cell.style.borderColor = 'rgba(255,255,255,0.05)';
-      }
-      container.appendChild(cell);
-    }
-  }
-
-  document.getElementById('importResultArea').style.display = 'flex';
-}
-
-function applyImport() {
-  if (!importResultData) return;
-  loadLevelToEditor(importResultData);
-  closeImportModal();
-  setStatus('solveStatus', 'ok', '🖼️ Уровень загружен из картинки!');
-}
-
-// Drag & drop on the drop area
-(function setupImportDrop() {
-  const drop = document.getElementById('importDropArea');
-  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
-  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
-  drop.addEventListener('drop', e => {
-    e.preventDefault();
-    drop.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) loadImageFile(file);
-  });
-  // Close overlay on background click
-  document.getElementById('importOverlay').addEventListener('click', e => {
-    if (e.target.id === 'importOverlay') closeImportModal();
-  });
-})();
 
 // ============================================================
 // INIT
