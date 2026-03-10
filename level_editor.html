@@ -866,9 +866,10 @@ function renderLevelList() {
     });
     item.addEventListener('click', () => {
       editingIdx = i;
-      document.getElementById('levelNum').value = i + 1;
+      const lvNum = lv._n || (i + 1);
+      document.getElementById('levelNum').value = lvNum;
       loadLevelToEditor(lv);
-      setLevelBadge(i + 1, true);
+      setLevelBadge(lvNum, true);
       renderLevelList();
     });
     list.appendChild(item);
