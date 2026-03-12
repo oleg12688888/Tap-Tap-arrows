@@ -120,36 +120,40 @@
 
   /* ===== MAIN AREA ===== */
   .main {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 20px; gap: 12px; overflow: auto;
+    flex: 1; overflow: auto; padding: 20px;
+  }
+  .board-area {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    min-width: max-content; margin: 0 auto;
   }
 
   .board-info { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text2); }
 
   .editor-board {
-    display: grid; gap: 3px; background: rgba(255,255,255,0.03);
-    padding: 10px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);
+    display: grid; gap: 3px; background: #c8cdd4;
+    padding: 10px; border-radius: 16px; border: 1px solid #b0b6be;
+    user-select: none;
   }
 
   .editor-cell {
-    width: 60px; height: 60px; background: rgba(255,255,255,0.04);
-    border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+    width: 60px; height: 60px; background: #e8eaed;
+    border-radius: 10px; border: 1px solid #cdd0d6;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: all 0.12s; position: relative; font-size: 22px;
+    transition: background 0.1s, border-color 0.1s; position: relative; font-size: 22px;
   }
-  .editor-cell:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
-  .editor-cell.has-tile { border-color: rgba(255,255,255,0.2); }
-  .editor-cell.has-gear { background: rgba(127,140,141,0.3); border-color: rgba(127,140,141,0.5); }
+  .editor-cell:hover { background: #d8dce3; border-color: #b8bec8; }
+  .editor-cell.has-tile { border-color: #a0a8b4; }
+  .editor-cell.has-gear { background: rgba(127,140,141,0.35); border-color: rgba(127,140,141,0.6); }
 
   .cell-arrow { font-size: 26px; font-weight: 900; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
   .cell-color-dot {
     position: absolute; bottom: 3px; right: 3px;
-    width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3);
+    width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2);
   }
   .cell-coords {
     position: absolute; top: 2px; left: 3px;
-    font-size: 7px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,0.2);
+    font-size: 7px; font-family: 'JetBrains Mono', monospace; color: rgba(0,0,0,0.3);
   }
 
   /* ===== RIGHT PANEL ===== */
@@ -248,9 +252,9 @@
     <h3>Размер поля</h3>
     <div class="row">
       <label style="font-size:12px;color:var(--text2)">Строки</label>
-      <input type="number" id="inputRows" value="5" min="2" max="25">
+      <input type="number" id="inputRows" value="5" min="2" max="35">
       <label style="font-size:12px;color:var(--text2)">Столб.</label>
-      <input type="number" id="inputCols" value="5" min="2" max="25">
+      <input type="number" id="inputCols" value="5" min="2" max="35">
     </div>
     <button class="btn btn-dark btn-full" onclick="resizeBoard()">Применить размер</button>
   </div>
@@ -301,9 +305,11 @@
 
 <!-- ===== MAIN BOARD ===== -->
 <div class="main">
-  <div class="board-info" id="boardInfo">5×5 · 0 стрелок</div>
-  <div class="editor-board" id="editorBoard"></div>
-  <div id="solveStatus"></div>
+  <div class="board-area">
+    <div class="board-info" id="boardInfo">5×5 · 0 стрелок</div>
+    <div class="editor-board" id="editorBoard"></div>
+    <div id="solveStatus"></div>
+  </div>
 </div>
 
 
@@ -359,6 +365,7 @@ const GAME_COLORS = [
   { id:'dark_violet', hex:'#6c1f8b', label:'Т-фиолет'  },
   { id:'dark_pink',   hex:'#880e4f', label:'Т-розовый' },
   { id:'dark_olive',  hex:'#4a5500', label:'Т-олива'   },
+  { id:'bej',         hex:'#f5deb3', label:'Бежевый'   },
 ];
 
 const COLORS_MAP = Object.fromEntries(GAME_COLORS.map(c => [c.id, c.hex]));
@@ -618,10 +625,20 @@ function setLevelBadge(n, exists, lvObj) {
 // ============================================================
 // BOARD RENDERING
 // ============================================================
+function getCellSize() {
+  const maxDim = Math.max(rows, cols);
+  if (maxDim > 28) return 36;
+  if (maxDim > 20) return 48;
+  return 60;
+}
+
 function renderBoard() {
   const board = document.getElementById('editorBoard');
-  board.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
-  board.style.gridTemplateRows    = `repeat(${rows}, 60px)`;
+  const cs = getCellSize();
+  const arrowFs = cs > 48 ? 26 : cs > 36 ? 20 : 15;
+  const coordFs = cs > 48 ? 7 : 6;
+  board.style.gridTemplateColumns = `repeat(${cols}, ${cs}px)`;
+  board.style.gridTemplateRows    = `repeat(${rows}, ${cs}px)`;
   board.innerHTML = '';
 
   for (let r = 0; r < rows; r++) {
@@ -629,10 +646,14 @@ function renderBoard() {
       const cell = document.createElement('div');
       cell.className = 'editor-cell';
       cell.dataset.r = r; cell.dataset.c = c;
+      cell.style.width  = cs + 'px';
+      cell.style.height = cs + 'px';
+      cell.style.fontSize = arrowFs + 'px';
 
       const coords = document.createElement('span');
       coords.className = 'cell-coords';
       coords.textContent = `${r},${c}`;
+      coords.style.fontSize = coordFs + 'px';
       cell.appendChild(coords);
 
       const key = `${r},${c}`;
@@ -659,7 +680,8 @@ function renderBoard() {
         }
       }
 
-      cell.addEventListener('click', () => onCellClick(r, c));
+      cell.addEventListener('mousedown', e => { if (e.button === 0) e.stopPropagation(); });
+      cell.addEventListener('click', () => { if (!_panMoved) onCellClick(r, c); });
       cell.addEventListener('contextmenu', e => {
         e.preventDefault();
         delete grid[`${r},${c}`];
@@ -707,8 +729,8 @@ document.querySelectorAll('.tool-btn').forEach(btn => {
 // BOARD SIZE
 // ============================================================
 function resizeBoard() {
-  rows = Math.max(2, Math.min(25, parseInt(document.getElementById('inputRows').value) || 5));
-  cols = Math.max(2, Math.min(25, parseInt(document.getElementById('inputCols').value) || 5));
+  rows = Math.max(2, Math.min(35, parseInt(document.getElementById('inputRows').value) || 5));
+  cols = Math.max(2, Math.min(35, parseInt(document.getElementById('inputCols').value) || 5));
   document.getElementById('inputRows').value = rows;
   document.getElementById('inputCols').value = cols;
   Object.keys(grid).forEach(k => {
@@ -977,6 +999,43 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveToGame(); }
 });
 
+
+// ============================================================
+// DRAG-TO-PAN (board area)
+// ============================================================
+let _panActive = false, _panMoved = false;
+let _panStartX = 0, _panStartY = 0, _panScrollL = 0, _panScrollT = 0;
+
+const _mainEl = document.querySelector('.main');
+
+_mainEl.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (e.target.closest('.editor-cell')) return; // cell handles its own click
+  _panActive = true;
+  _panMoved  = false;
+  _panStartX = e.clientX;
+  _panStartY = e.clientY;
+  _panScrollL = _mainEl.scrollLeft;
+  _panScrollT = _mainEl.scrollTop;
+  _mainEl.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!_panActive) return;
+  const dx = e.clientX - _panStartX;
+  const dy = e.clientY - _panStartY;
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) _panMoved = true;
+  _mainEl.scrollLeft = _panScrollL - dx;
+  _mainEl.scrollTop  = _panScrollT - dy;
+});
+
+document.addEventListener('mouseup', () => {
+  if (!_panActive) return;
+  _panActive = false;
+  _mainEl.style.cursor = '';
+  setTimeout(() => { _panMoved = false; }, 50);
+});
 
 // ============================================================
 // INIT
